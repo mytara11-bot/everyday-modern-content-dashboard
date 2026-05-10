@@ -8,6 +8,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Lato:wght@400;500;700&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
@@ -23,7 +24,7 @@ input,select,textarea,button{font-family:'Lato',sans-serif}
 <script type="text/babel">
 const {useState,useEffect}=React;
 
-const STATUS_C={"Available":"#c49a3c","In GHL":"#4a8fa0","Posted":"#7a9e7e"};
+const STATUS_C={"Idea":"#9b6dc5","Available":"#c49a3c","In GHL":"#4a8fa0","Posted":"#7a9e7e"};
 const PLAT_C={Facebook:"#1877f2",Instagram:"#e1306c",YouTube:"#ff0000",TikTok:"#010101",Substack:"#ff6719",Threads:"#5c5c5c"};
 const FORMATS=["Reel/Short","Graphic","Newsletter","Substack Note","Video Script","Blog","Thread","Quote Card","Other"];
 const PLATFORMS=["Facebook","Instagram","YouTube","TikTok","Substack","Threads"];
@@ -62,7 +63,7 @@ function Modal({title,onClose,children,wide}){
 // ── Content card ─────────────────────────────────────────────────────────────
 function Card({item,onClick,onStatusChange}){
   const sc=STATUS_C[item.status]||STATUS_C.Available;
-  const next=item.status==="Available"?"In GHL":item.status==="In GHL"?"Posted":"Available";
+  const next=item.status==="Idea"?"Available":item.status==="Available"?"In GHL":item.status==="In GHL"?"Posted":"Idea";
   return(
     <div style={{background:"white",borderRadius:"14px",boxShadow:"0 2px 10px rgba(0,0,0,0.06)",borderTop:`3px solid ${sc}`,overflow:"hidden",display:"flex",flexDirection:"column"}}>
       {/* Hook — clickable */}
@@ -228,76 +229,104 @@ function EditModal({item,onClose,onSave}){
   );
 }
 
-// ── Import modal ─────────────────────────────────────────────────────────────
+// ── Word doc parser ───────────────────────────────────────────────────────────
+const guessFormat=t=>{const s=(t||"").toLowerCase();if(/newsletter|substack post/i.test(s))return"Newsletter";if(/substack note|note \d/i.test(s))return"Substack Note";if(/short \d|reel|youtube short/i.test(s))return"Reel/Short";if(/thread/i.test(s))return"Thread";if(/script/i.test(s))return"Video Script";if(/blog/i.test(s))return"Blog";if(/graphic|quote card/i.test(s))return"Graphic";return"Other";};
+const parseDocx=async file=>{
+  const buf=await file.arrayBuffer();
+  const res=await mammoth.extractRawText({arrayBuffer:buf});
+  const text=res.value||"";
+  const paras=text.split(/\n{2,}/).map(p=>p.trim()).filter(p=>p.length>2);
+  const isHeading=s=>s.length<150&&(
+    (s===s.toUpperCase()&&s.length>4&&/[A-Z]/.test(s))||
+    /^(Talking Point|Short \d|PART |Week |Day \d|Note \d|Title:|Hook:|Newsletter|Substack|Script:|Thread|Blog|Strategy|##)/i.test(s)||
+    /^[🎞📝📌🎬📅🚀🌿🧠💜🌊🎯💡♻️⭐✏️📂🏛🖤]/u.test(s)
+  );
+  const items=[];let hook=null,body=[];
+  const flush=()=>{if(hook!==null||body.length){const h=hook||body[0]||"";items.push({id:genId(),hook:h,caption:body.join("\n\n"),hashtags:"",platforms:[],format:guessFormat(h+" "+body.slice(0,2).join(" ")),visualDir:"",triggerWord:"",productCTA:"",status:"Available",date:"",notes:"",pillar:"",canvaLink:"",dateCreated:new Date().toISOString()});}};
+  for(const p of paras){
+    const first=p.split("\n")[0];
+    if(isHeading(first)){flush();hook=first;const rest=p.split("\n").slice(1).join("\n").trim();body=rest?[rest]:[];}
+    else{if(hook===null){hook=first;const rest=p.split("\n").slice(1).join("\n").trim();body=rest?[rest]:[];}else body.push(p);}
+  }
+  flush();
+  return items.filter(i=>i.hook||i.caption);
+};
+
+const parseMd=async file=>{
+  const text=await file.text();
+  const lines=text.split("\n");
+  const items=[];let hook=null,body=[];
+  const flush=()=>{if(hook!==null||body.length){const h=(hook||body[0]||"").replace(/^#+\s*/,"").trim();const b=body.join("\n").trim();if(h||b)items.push({id:genId(),hook:h,caption:b,hashtags:"",platforms:[],format:guessFormat(h+" "+b),visualDir:"",triggerWord:"",productCTA:"",status:"Idea",date:"",notes:"",pillar:"",canvaLink:"",dateCreated:new Date().toISOString()});}};
+  for(const line of lines){
+    if(/^#{1,4}\s/.test(line)){flush();hook=line.replace(/^#+\s*/,"").trim();body=[];}
+    else body.push(line);
+  }
+  flush();
+  // If no headings found, split by double newlines instead
+  if(items.length<=1&&text.includes("\n\n")){
+    items.length=0;
+    const paras=text.split(/\n{2,}/).map(p=>p.trim()).filter(p=>p.length>2);
+    for(const p of paras){const ls=p.split("\n");items.push({id:genId(),hook:ls[0].replace(/^#+\s*/,"").trim(),caption:ls.slice(1).join("\n").trim(),hashtags:"",platforms:[],format:guessFormat(ls[0]),visualDir:"",triggerWord:"",productCTA:"",status:"Idea",date:"",notes:"",pillar:"",canvaLink:"",dateCreated:new Date().toISOString()});}
+  }
+  return items.filter(i=>i.hook||i.caption);
+};
 function ImportModal({onClose,onImport}){
-  const [preview,setPreview]=useState(null);const [rows,setRows]=useState([]);const [err,setErr]=useState(null);
+  const [preview,setPreview]=useState(null);const [rows,setRows]=useState([]);const [err,setErr]=useState(null);const [loading,setLoading]=useState(false);
 
-  const handle=e=>{
+  const handle=async e=>{
     const file=e.target.files[0];if(!file)return;
-    // Parse as raw arrays first so we can find the real header row
-    Papa.parse(file,{header:false,skipEmptyLines:true,dynamicTyping:false,
-      complete:raw=>{
-        if(!raw.data.length){setErr("No data found");return;}
-        // Find the row containing actual column headers
-        const hIdx=raw.data.findIndex(row=>row.some(c=>String(c).toUpperCase().includes("HOOK")||String(c).toUpperCase().includes("CAPTION")||String(c).toUpperCase()==="STATUS"&&row.some(d=>String(d).toUpperCase().includes("HOOK"))));
-        // Build rows object using the found header row
-        let rows;
-        if(hIdx>=0){
-          const headers=raw.data[hIdx].map(h=>String(h).trim());
-          rows=raw.data.slice(hIdx+1).map(row=>{const o={};headers.forEach((h,i)=>{o[h]=row[i]!=null?String(row[i]):"";});return o;}).filter(r=>Object.values(r).some(v=>v.trim()));
-        } else {
-          // Fallback: use first row as headers
-          const headers=raw.data[0].map(h=>String(h).trim());
-          rows=raw.data.slice(1).map(row=>{const o={};headers.forEach((h,i)=>{o[h]=row[i]!=null?String(row[i]):"";});return o;}).filter(r=>Object.values(r).some(v=>v.trim()));
-        }
-        if(!rows.length){setErr("No data rows found");return;}
-        const cols=Object.keys(rows[0]);
-        const isGHL=cols.some(c=>c.includes("HOOK")||c.includes("GHL PRIMARY"));
-        const isDailyCal=cols.some(c=>c.includes("Main Line"))&&cols.some(c=>c.includes("Caption"));
-
-        let mapped;
-        if(isGHL){
-          mapped=rows.filter(row=>(row["HOOK / TOPIC"]||row["CAPTION"]||"").trim()).map(row=>({
-            id:genId(),hook:row["HOOK / TOPIC"]||"",caption:row["CAPTION"]||"",hashtags:row["HASHTAGS"]||"",
-            platforms:parsePlats(row["GHL PRIMARY PLATFORM(S)"]||""),format:(row["POST TYPE"]||"Reel/Short").replace("Video — ","").replace("Graphic — ","Graphic ").trim(),
-            visualDir:`${row["CREATIVE TYPE"]||""} ${row["CREATIVE SIZE"]||""}`.trim(),
-            triggerWord:row["COMMENT TRIGGER WORD"]||"",productCTA:row["PRODUCT CTA"]||"",
-            status:parseSt(row["STATUS"]||""),date:row["DATE"]||"",
-            notes:row["GHL SCHEDULING NOTES"]||"",pillar:row["CONTENT PILLAR"]||"",
-            specialEvent:row["SPECIAL EVENT"]||"",canvaLink:"",dateCreated:new Date().toISOString()
-          }));
-        } else if(isDailyCal){
-          mapped=rows.filter(row=>(row["Main Line / Hook"]||"").trim()).map(row=>({
-            id:genId(),hook:row["Main Line / Hook"]||"",caption:row["Caption"]||"",
-            hashtags:row["Suggested Tags"]||"",platforms:[],format:row["Format"]||"Graphic",
-            visualDir:row["Visual Direction"]||"",triggerWord:"",productCTA:"",
-            status:"Available",date:row["Date"]||"",notes:row["Comment Prompt"]||"",
-            pillar:"",specialEvent:"",canvaLink:"",dateCreated:new Date().toISOString()
-          }));
-        } else {
-          // Generic - best guess
-          mapped=rows.map(row=>{
-            const vals=Object.values(row);
-            const hook=row["hook"]||row["Hook"]||row["HOOK"]||row["title"]||row["Title"]||vals[0]||"";
-            const caption=row["caption"]||row["Caption"]||row["CAPTION"]||row["body"]||row["Body"]||vals[1]||"";
-            return{id:genId(),hook:String(hook).slice(0,200),caption:String(caption),hashtags:row["hashtags"]||row["Hashtags"]||row["HASHTAGS"]||"",
-              platforms:[],format:"Other",visualDir:"",triggerWord:"",productCTA:"",status:"Available",
-              date:"",notes:"",pillar:"",canvaLink:"",dateCreated:new Date().toISOString()};
-          }).filter(i=>i.hook||i.caption);
-        }
-        const type=isGHL?"✓ GHL Calendar format detected":isDailyCal?"✓ Daily Calendar format detected":"Generic CSV";
-        setRows(mapped);setPreview({type,total:mapped.length,sample:mapped.slice(0,3)});setErr(null);
-      },
-      error:()=>setErr("Could not read this file")
-    });
+    setErr(null);setPreview(null);setRows([]);setLoading(true);
+    try{
+      if(file.name.toLowerCase().endsWith(".docx")){
+        const mapped=await parseDocx(file);
+        if(!mapped.length){setErr("No content sections found in this document");setLoading(false);return;}
+        // Word doc imports default to Idea
+        const withIdea=mapped.map(i=>({...i,status:"Idea"}));
+        setRows(withIdea);setPreview({type:"✓ Word document — items marked as Idea",total:withIdea.length,sample:withIdea.slice(0,3)});
+      } else if(file.name.toLowerCase().endsWith(".md")){
+        const mapped=await parseMd(file);
+        if(!mapped.length){setErr("No content found in this Markdown file");setLoading(false);return;}
+        setRows(mapped);setPreview({type:"✓ Markdown file — items marked as Idea",total:mapped.length,sample:mapped.slice(0,3)});
+      } else {
+        Papa.parse(file,{header:false,skipEmptyLines:true,dynamicTyping:false,
+          complete:raw=>{
+            if(!raw.data.length){setErr("No data found");setLoading(false);return;}
+            const hIdx=raw.data.findIndex(row=>row.some(c=>String(c).toUpperCase().includes("HOOK")||String(c).toUpperCase().includes("CAPTION")));
+            let dataRows;
+            if(hIdx>=0){const h=raw.data[hIdx].map(c=>String(c).trim());dataRows=raw.data.slice(hIdx+1).map(row=>{const o={};h.forEach((k,i)=>{o[k]=row[i]!=null?String(row[i]):"";});return o;}).filter(r=>Object.values(r).some(v=>v.trim()));}
+            else{const h=raw.data[0].map(c=>String(c).trim());dataRows=raw.data.slice(1).map(row=>{const o={};h.forEach((k,i)=>{o[k]=row[i]!=null?String(row[i]):"";});return o;}).filter(r=>Object.values(r).some(v=>v.trim()));}
+            if(!dataRows.length){setErr("No data rows found");setLoading(false);return;}
+            const cols=Object.keys(dataRows[0]);
+            const isGHL=cols.some(c=>c.includes("HOOK")||c.includes("GHL PRIMARY"));
+            const isDaily=cols.some(c=>c.includes("Main Line"))&&cols.some(c=>c.includes("Caption"));
+            let mapped;
+            if(isGHL){
+              mapped=dataRows.filter(r=>(r["HOOK / TOPIC"]||r["CAPTION"]||"").trim()).map(r=>({id:genId(),hook:r["HOOK / TOPIC"]||"",caption:r["CAPTION"]||"",hashtags:r["HASHTAGS"]||"",platforms:parsePlats(r["GHL PRIMARY PLATFORM(S)"]||""),format:(r["POST TYPE"]||"Reel/Short").replace("Video — ","").replace("Graphic — ","Graphic ").trim(),visualDir:`${r["CREATIVE TYPE"]||""} ${r["CREATIVE SIZE"]||""}`.trim(),triggerWord:r["COMMENT TRIGGER WORD"]||"",productCTA:r["PRODUCT CTA"]||"",status:parseSt(r["STATUS"]||""),date:r["DATE"]||"",notes:r["GHL SCHEDULING NOTES"]||"",pillar:r["CONTENT PILLAR"]||"",specialEvent:r["SPECIAL EVENT"]||"",canvaLink:"",dateCreated:new Date().toISOString()}));
+            } else if(isDaily){
+              mapped=dataRows.filter(r=>(r["Main Line / Hook"]||"").trim()).map(r=>({id:genId(),hook:r["Main Line / Hook"]||"",caption:r["Caption"]||"",hashtags:r["Suggested Tags"]||"",platforms:[],format:r["Format"]||"Graphic",visualDir:r["Visual Direction"]||"",triggerWord:"",productCTA:"",status:"Available",date:r["Date"]||"",notes:r["Comment Prompt"]||"",pillar:"",canvaLink:"",dateCreated:new Date().toISOString()}));
+            } else {
+              mapped=dataRows.map(r=>{const vals=Object.values(r);const h=r["hook"]||r["Hook"]||r["HOOK"]||r["title"]||r["Title"]||vals[0]||"";const c=r["caption"]||r["Caption"]||r["CAPTION"]||r["body"]||r["Body"]||vals[1]||"";return{id:genId(),hook:String(h).slice(0,200),caption:String(c),hashtags:r["hashtags"]||r["Hashtags"]||"",platforms:[],format:"Other",visualDir:"",triggerWord:"",productCTA:"",status:"Available",date:"",notes:"",pillar:"",canvaLink:"",dateCreated:new Date().toISOString()};}).filter(i=>i.hook||i.caption);
+            }
+            const type=isGHL?"✓ GHL Calendar format":isDaily?"✓ Daily Calendar format":"Generic CSV";
+            setRows(mapped);setPreview({type,total:mapped.length,sample:mapped.slice(0,3)});setLoading(false);
+          },
+          error:()=>{setErr("Could not read this file");setLoading(false);}
+        });
+        return;
+      }
+    }catch(e){setErr("Could not read file — "+e.message);}
+    setLoading(false);
   };
 
   return(
     <Modal title="Import Content" onClose={onClose} wide>
       <div style={{background:"#f8f7f4",borderRadius:"10px",padding:"13px 16px",fontSize:"0.82rem",color:"#6e6e6e",marginBottom:"16px",lineHeight:"1.7"}}>
-        <strong style={{color:"#2d2d2d"}}>Works with your GHL Excel calendar</strong> — just export as CSV from Excel (File → Save As → CSV) and upload here. Also works with the daily calendar format or any spreadsheet with hook/caption columns.
+        <strong style={{color:"#2d2d2d"}}>Accepts Word docs (.docx), Markdown (.md) and CSV files.</strong><br/>
+        • <strong>Word or MD files</strong>: upload your content batch docs directly — each section becomes a card, marked as <strong style={{color:"#9b6dc5"}}>Idea</strong><br/>
+        • <strong>GHL calendar</strong>: File → Save As → CSV UTF-8, then upload here
       </div>
-      <input type="file" accept=".csv,.xlsx" onChange={handle} style={{marginBottom:"14px"}}/>
+      <input type="file" accept=".csv,.docx,.md" onChange={handle} style={{marginBottom:"14px"}}/>
+      {loading&&<div style={{color:"#7a9e7e",fontSize:"0.83rem",marginBottom:"10px"}}>Reading file…</div>}
       {err&&<div style={{color:"#c47050",marginBottom:"10px",fontSize:"0.83rem",padding:"9px",background:"#fdf5f0",borderRadius:"8px"}}>{err}</div>}
       {preview&&<>
         <div style={{marginBottom:"10px",display:"flex",gap:"8px",alignItems:"center"}}>
@@ -308,7 +337,7 @@ function ImportModal({onClose,onImport}){
           {preview.sample.map((item,i)=>(
             <div key={i} style={{padding:"10px 12px",background:"white",borderRadius:"8px"}}>
               <div style={{fontSize:"0.82rem",fontWeight:"700",marginBottom:"3px"}}>{item.hook||"Untitled"}</div>
-              <div style={{fontSize:"0.74rem",color:"#9e9e9e"}}>{trunc(item.caption,80)} {item.platforms?.length>0&&`· ${item.platforms.join(", ")}`} · <span style={{color:STATUS_C[item.status]||"#aaa"}}>{item.status}</span></div>
+              <div style={{fontSize:"0.74rem",color:"#9e9e9e"}}>{trunc(item.caption,80)} · <span style={{color:STATUS_C[item.status]||"#aaa"}}>{item.status}</span> · {item.format}</div>
             </div>
           ))}
         </div>
@@ -317,7 +346,7 @@ function ImportModal({onClose,onImport}){
           <button style={pBtn()} onClick={()=>onImport(rows)}>Import {preview.total} items</button>
         </div>
       </>}
-      {!preview&&<div style={{display:"flex",justifyContent:"flex-end"}}><button style={sBtn()} onClick={onClose}>Cancel</button></div>}
+      {!preview&&!loading&&<div style={{display:"flex",justifyContent:"flex-end"}}><button style={sBtn()} onClick={onClose}>Cancel</button></div>}
     </Modal>
   );
 }
