@@ -390,6 +390,7 @@ function App(){
         <div style={{display:"flex",gap:"7px",alignItems:"center"}}>
           <button onClick={()=>setModal("import")} style={{...sBtn(),background:"#3a3a3a",border:"1px solid #5a5a5a",color:"#d0d0d0",fontSize:"0.78rem"}}>⬆ Import CSV</button>
           <button onClick={()=>{setSel(null);setModal("add");}} style={pBtn()}>+ Add Content</button>
+          <button onClick={()=>{if(confirm("Delete ALL content and start fresh? This cannot be undone.")){update([]);showToast("Library cleared ✓");}}} style={{padding:"6px 11px",borderRadius:"20px",border:"1px solid #8a3a3a",cursor:"pointer",background:"transparent",color:"#c47050",fontSize:"0.7rem",fontFamily:"inherit"}}>🗑 Clear All</button>
           <button onClick={exportBackup} style={{padding:"6px 11px",borderRadius:"20px",border:"1px solid #4a4a4a",cursor:"pointer",background:"transparent",color:"#8a8a8a",fontSize:"0.7rem",fontFamily:"inherit"}}>⬇ Backup</button>
           <label style={{padding:"6px 11px",borderRadius:"20px",border:"1px solid #4a4a4a",cursor:"pointer",background:"transparent",color:"#8a8a8a",fontSize:"0.7rem",fontFamily:"inherit",display:"inline-block"}}>⬆ Restore<input type="file" accept=".json" onChange={importBackup} style={{display:"none"}}/></label>
         </div>
