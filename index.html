@@ -234,16 +234,30 @@ function ImportModal({onClose,onImport}){
 
   const handle=e=>{
     const file=e.target.files[0];if(!file)return;
-    Papa.parse(file,{header:true,skipEmptyLines:true,dynamicTyping:false,
-      complete:r=>{
-        if(!r.data.length){setErr("No data found");return;}
-        const cols=Object.keys(r.data[0]);
-        const isGHL=cols.some(c=>c.includes("HOOK")||c.includes("CAPTION"));
-        const isDailyCal=cols.includes("Main Line / Hook")&&cols.includes("Caption");
+    // Parse as raw arrays first so we can find the real header row
+    Papa.parse(file,{header:false,skipEmptyLines:true,dynamicTyping:false,
+      complete:raw=>{
+        if(!raw.data.length){setErr("No data found");return;}
+        // Find the row containing actual column headers
+        const hIdx=raw.data.findIndex(row=>row.some(c=>String(c).toUpperCase().includes("HOOK")||String(c).toUpperCase().includes("CAPTION")||String(c).toUpperCase()==="STATUS"&&row.some(d=>String(d).toUpperCase().includes("HOOK"))));
+        // Build rows object using the found header row
+        let rows;
+        if(hIdx>=0){
+          const headers=raw.data[hIdx].map(h=>String(h).trim());
+          rows=raw.data.slice(hIdx+1).map(row=>{const o={};headers.forEach((h,i)=>{o[h]=row[i]!=null?String(row[i]):"";});return o;}).filter(r=>Object.values(r).some(v=>v.trim()));
+        } else {
+          // Fallback: use first row as headers
+          const headers=raw.data[0].map(h=>String(h).trim());
+          rows=raw.data.slice(1).map(row=>{const o={};headers.forEach((h,i)=>{o[h]=row[i]!=null?String(row[i]):"";});return o;}).filter(r=>Object.values(r).some(v=>v.trim()));
+        }
+        if(!rows.length){setErr("No data rows found");return;}
+        const cols=Object.keys(rows[0]);
+        const isGHL=cols.some(c=>c.includes("HOOK")||c.includes("GHL PRIMARY"));
+        const isDailyCal=cols.some(c=>c.includes("Main Line"))&&cols.some(c=>c.includes("Caption"));
 
         let mapped;
         if(isGHL){
-          mapped=r.data.filter(row=>(row["HOOK / TOPIC"]||row["CAPTION"]||"").trim()).map(row=>({
+          mapped=rows.filter(row=>(row["HOOK / TOPIC"]||row["CAPTION"]||"").trim()).map(row=>({
             id:genId(),hook:row["HOOK / TOPIC"]||"",caption:row["CAPTION"]||"",hashtags:row["HASHTAGS"]||"",
             platforms:parsePlats(row["GHL PRIMARY PLATFORM(S)"]||""),format:(row["POST TYPE"]||"Reel/Short").replace("Video — ","").replace("Graphic — ","Graphic ").trim(),
             visualDir:`${row["CREATIVE TYPE"]||""} ${row["CREATIVE SIZE"]||""}`.trim(),
@@ -253,7 +267,7 @@ function ImportModal({onClose,onImport}){
             specialEvent:row["SPECIAL EVENT"]||"",canvaLink:"",dateCreated:new Date().toISOString()
           }));
         } else if(isDailyCal){
-          mapped=r.data.filter(row=>(row["Main Line / Hook"]||"").trim()).map(row=>({
+          mapped=rows.filter(row=>(row["Main Line / Hook"]||"").trim()).map(row=>({
             id:genId(),hook:row["Main Line / Hook"]||"",caption:row["Caption"]||"",
             hashtags:row["Suggested Tags"]||"",platforms:[],format:row["Format"]||"Graphic",
             visualDir:row["Visual Direction"]||"",triggerWord:"",productCTA:"",
@@ -262,7 +276,7 @@ function ImportModal({onClose,onImport}){
           }));
         } else {
           // Generic - best guess
-          mapped=r.data.map(row=>{
+          mapped=rows.map(row=>{
             const vals=Object.values(row);
             const hook=row["hook"]||row["Hook"]||row["HOOK"]||row["title"]||row["Title"]||vals[0]||"";
             const caption=row["caption"]||row["Caption"]||row["CAPTION"]||row["body"]||row["Body"]||vals[1]||"";
@@ -271,8 +285,7 @@ function ImportModal({onClose,onImport}){
               date:"",notes:"",pillar:"",canvaLink:"",dateCreated:new Date().toISOString()};
           }).filter(i=>i.hook||i.caption);
         }
-
-        const type=isGHL?"✓ GHL Calendar format":isDailyCal?"✓ Daily Calendar format":"Generic CSV";
+        const type=isGHL?"✓ GHL Calendar format detected":isDailyCal?"✓ Daily Calendar format detected":"Generic CSV";
         setRows(mapped);setPreview({type,total:mapped.length,sample:mapped.slice(0,3)});setErr(null);
       },
       error:()=>setErr("Could not read this file")
