@@ -3,167 +3,54 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Everyday Modern — Content Command Centre</title>
+<title>Everyday Modern — Content Library</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Lato:wght@400;500;700&display=swap" rel="stylesheet">
 <style>
-  *{box-sizing:border-box;margin:0;padding:0}
-  body{font-family:'Lato',sans-serif;background:#f8f7f4;color:#2d2d2d;min-height:100vh}
-  input,select,textarea,button{font-family:'Lato',sans-serif}
-  ::-webkit-scrollbar{width:5px;height:5px}
-  ::-webkit-scrollbar-track{background:#f0ede8}
-  ::-webkit-scrollbar-thumb{background:#c8c4bc;border-radius:3px}
-  #root{min-height:100vh}
-  .hover-lift{transition:box-shadow 0.15s,transform 0.15s}
-  .hover-lift:hover{box-shadow:0 6px 20px rgba(0,0,0,0.11)!important;transform:translateY(-1px)}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Lato',sans-serif;background:#f8f7f4;color:#2d2d2d;min-height:100vh}
+input,select,textarea,button{font-family:'Lato',sans-serif}
+::-webkit-scrollbar{width:5px}::-webkit-scrollbar-track{background:#f0ede8}::-webkit-scrollbar-thumb{background:#c8c4bc;border-radius:3px}
+.card-hover{transition:box-shadow 0.15s,transform 0.15s;cursor:pointer}
+.card-hover:hover{box-shadow:0 8px 24px rgba(0,0,0,0.12)!important;transform:translateY(-2px)}
 </style>
 </head>
 <body>
-<div id="root"><div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;gap:12px"><div style="color:#7a9e7e;font-family:'Playfair Display',serif;font-size:1.6rem">Everyday Modern</div><div style="color:#b8b8b0;font-size:0.8rem;letter-spacing:0.12em">LOADING YOUR COMMAND CENTRE…</div></div></div>
-
+<div id="root"></div>
 <script type="text/babel">
-const {useState,useEffect,useRef}=React;
+const {useState,useEffect}=React;
 
-// ── Constants ──────────────────────────────────────────────────────────────
-const PILLARS=["Nervous System","HSP Life","Emotional Triggers","Digital Overwhelm","Tech & Boomers","Seasonal/Social","Other"];
-const FORMATS=["Script","Caption","Blog/Newsletter","Reel/Short","Strategy Note","Product Copy","Thread"];
+const STATUS_C={"Available":"#c49a3c","In GHL":"#4a8fa0","Posted":"#7a9e7e"};
+const PLAT_C={Facebook:"#1877f2",Instagram:"#e1306c",YouTube:"#ff0000",TikTok:"#010101",Substack:"#ff6719",Threads:"#5c5c5c"};
+const FORMATS=["Reel/Short","Graphic","Newsletter","Substack Note","Video Script","Blog","Thread","Quote Card","Other"];
 const PLATFORMS=["Facebook","Instagram","YouTube","TikTok","Substack","Threads"];
-const STATUSES=["Idea","Drafted","Published","Repurposed"];
-const PLAT_C={Facebook:"#1877f2",Instagram:"#e1306c",YouTube:"#ff0000",TikTok:"#2d2d2d",Substack:"#ff6719",Threads:"#5c5c5c"};
-const STATUS_C={Idea:"#c49a3c",Drafted:"#4a8fa0",Published:"#5a8f5a",Repurposed:"#b07040"};
-const PILLAR_C=["#7a9e7e","#9eb8c4","#c4a882","#7aa8a0","#b8a8c2","#c4b896","#a0a0a0"];
-const CLUSTER_COLORS=["#7a9e7e","#7aa8a0","#c4a882","#b8a8c2","#9eb8c4","#c4b896","#a08080"];
+const PILLARS=["Nervous System","HSP Life","Emotional Triggers","Digital Overwhelm","Tech & Boomers","Seasonal/Social","Other"];
 
-const PERF_MAP={
-  Instagram:{title:["title"],date:["date"],views:["Views (organic)","Views (Organic)"],reach:["Reach (Organic)"],likes:["Likes (Organic)"],engagement:["Engagement (Organic)"],avgWatch:["Avg Watch Time (Organic)"],saved:["Saved (Organic)"],shares:["Shares (Organic)"],url:["URL"]},
-  Facebook:{title:["Content"],date:["Date"],views:["Video Views"],reach:["Reach"],likes:["Likes"],comments:["Comments"],engagement:["Engagement"],avgWatch:["Avg. time watched (Seconds)"],url:["Reel Link"]},
-  YouTube:{title:["title"],date:["publishedAt"],views:["views"],likes:["likes"],comments:["comments"],avgWatch:["averageViewDuration"],url:["watchUrl"]},
-  TikTok:{title:["Video Title","Title","title"],date:["Date","date","Published Date"],views:["Video Views","Views","views"],likes:["Likes","likes"],comments:["Comments","comments"],shares:["Shares","shares"],avgWatch:["Average Watch Time","Avg Watch Time"],url:["Video Link","Link","url"]}
-};
-
-// ── Helpers ────────────────────────────────────────────────────────────────
 const genId=()=>Date.now().toString(36)+Math.random().toString(36).slice(2);
-const fmtDate=d=>{try{return new Date(d).toLocaleDateString("en-AU",{day:"numeric",month:"short",year:"numeric"});}catch{return"—";}};
-const trunc=(s="",n=90)=>s.length>n?s.slice(0,n)+"…":s;
-const getCol=(row,cols=[])=>{for(const c of cols){const v=row[c];if(v!==undefined&&v!==null&&v!=="")return v;}return null;};
-const isPlatTrue=v=>v===true||v==="true"||v==="TRUE"||v==="True"||v===1||v==="1";
+const trunc=(s="",n)=>s.length>n?s.slice(0,n)+"…":s;
+const save=d=>{try{localStorage.setItem("em_library_v1",JSON.stringify(d));}catch(e){}};
+const load=()=>{try{const d=localStorage.getItem("em_library_v1");return d?JSON.parse(d):null;}catch{return null;}};
 
-const saveLib=data=>{try{localStorage.setItem("em_lib_v2",JSON.stringify(data));}catch(e){}};
-const savePerf=data=>{try{localStorage.setItem("em_perf",JSON.stringify(data));}catch(e){}};
+const parsePlats=s=>{if(!s)return[];const r=[];if(/instagram/i.test(s))r.push("Instagram");if(/facebook/i.test(s))r.push("Facebook");if(/youtube/i.test(s))r.push("YouTube");if(/tiktok/i.test(s))r.push("TikTok");if(/substack/i.test(s))r.push("Substack");if(/threads/i.test(s))r.push("Threads");return r;};
+const parseSt=s=>{if(!s||!s.trim())return"Available";const l=s.toLowerCase().trim();if(l.startsWith("posted"))return"Posted";if(l.startsWith("scheduled"))return"In GHL";return"Available";};
 
-// ── Styles ─────────────────────────────────────────────────────────────────
-const card={background:"white",borderRadius:"14px",padding:"20px",boxShadow:"0 2px 12px rgba(0,0,0,0.06)"};
-const inp={padding:"9px 13px",borderRadius:"8px",border:"1.5px solid #e4e0d8",fontSize:"0.86rem",width:"100%",background:"white",boxSizing:"border-box",fontFamily:"inherit",color:"#2d2d2d",outline:"none"};
-const pBtn=(c="#7a9e7e")=>({padding:"9px 18px",borderRadius:"8px",border:"none",cursor:"pointer",fontSize:"0.83rem",fontWeight:"700",background:c,color:"white",fontFamily:"inherit"});
-const sBtn=()=>({padding:"8px 16px",borderRadius:"8px",border:"1.5px solid #e4e0d8",cursor:"pointer",fontSize:"0.83rem",fontWeight:"500",background:"white",color:"#4a4a4a",fontFamily:"inherit"});
-const bdg=color=>({display:"inline-flex",alignItems:"center",padding:"3px 9px",borderRadius:"20px",fontSize:"0.67rem",fontWeight:"700",background:`${color}1a`,color,border:`1px solid ${color}40`,letterSpacing:"0.04em",whiteSpace:"nowrap"});
-const Lbl=({children})=><div style={{fontSize:"0.73rem",fontWeight:"700",color:"#8a8a7a",marginBottom:"5px",letterSpacing:"0.06em",textTransform:"uppercase"}}>{children}</div>;
+// Styles
+const inp={padding:"9px 13px",borderRadius:"8px",border:"1.5px solid #e4e0d8",fontSize:"0.85rem",width:"100%",background:"white",boxSizing:"border-box",fontFamily:"inherit",color:"#2d2d2d",outline:"none"};
+const pBtn=(c="#7a9e7e")=>({padding:"9px 18px",borderRadius:"8px",border:"none",cursor:"pointer",fontSize:"0.83rem",fontWeight:"700",background:c,color:"white",fontFamily:"inherit",whiteSpace:"nowrap"});
+const sBtn=()=>({padding:"8px 15px",borderRadius:"8px",border:"1.5px solid #e4e0d8",cursor:"pointer",fontSize:"0.82rem",fontWeight:"500",background:"white",color:"#4a4a4a",fontFamily:"inherit",whiteSpace:"nowrap"});
+const bdg=c=>({display:"inline-flex",alignItems:"center",padding:"3px 8px",borderRadius:"20px",fontSize:"0.66rem",fontWeight:"700",background:`${c}18`,color:c,border:`1px solid ${c}35`,whiteSpace:"nowrap"});
+const Lbl=({c})=><div style={{fontSize:"0.72rem",fontWeight:"700",color:"#8a8a7a",marginBottom:"5px",letterSpacing:"0.06em",textTransform:"uppercase"}}>{c}</div>;
 
-// ── Seed Data ──────────────────────────────────────────────────────────────
-const SEED=[
-  {cluster:"Why Your Nervous System Is Loud",seqNum:1,title:"Why Your Nervous System Is Loud — Full Script (5–7 min)",format:"Script",pillar:"Nervous System",status:"Published",platforms:["YouTube"],tags:"nervous system, activation, high-functioning",notes:"Anchor long-form YouTube video.",
-  body:"Hi.\n\nIf your nervous system feels loud lately… like everything is just a bit too much… you're not imagining it. And you're not weak.\n\nA loud nervous system doesn't mean you're broken. It means something inside you feels unsafe, overloaded, or unresolved.\n\nYou can look calm on the outside and feel completely flooded on the inside. You can be productive. Capable. Responsible. And still feel like your chest is tight.\n\nThat's not personality. That's activation.\n\nWhen it's activated, it can sound like:\n• Racing thoughts • Irritability • Snapping at small things • Overthinking • Feeling 'behind' • Trouble switching off • A low-level hum of urgency\n\nIt's not random. Your nervous system gets loud when you've been overriding yourself. Saying yes when you meant no. Performing capability. You haven't rested deeply in a long time.\n\nIt whispers first. And when the whispers are ignored, it gets louder. Not to punish you. To protect you.\n\nIn modern life, 'danger' isn't always physical. It can be social pressure, work expectations, uncertainty, conflict, perfectionism, chronic busyness.\n\nYour body doesn't always know the difference between a tiger and an inbox.\n\nInstead of asking 'How do I shut this down?' — try asking 'What is this protecting me from?'\n\nSometimes regulation isn't about breathing techniques. Sometimes it's about honesty. About admitting: 'I'm stretched.' 'I'm tired.' 'I'm carrying too much.'\n\nA loud nervous system isn't proof you're failing. It's proof your body is trying to protect you. And that's not weakness. That's intelligence.\n\nWith you in the moment."},
-
-  {cluster:"Why Your Nervous System Is Loud",seqNum:2,title:"YouTube Description — Why Your Nervous System Is Loud",format:"Product Copy",pillar:"Nervous System",status:"Published",platforms:["YouTube"],tags:"SEO, description",notes:"Copy-paste into YouTube description field.",
-  body:"Why does your nervous system feel loud lately?\n\nRacing thoughts. Tight chest. Irritability. Brain fog. If you're high-functioning but constantly activated inside, this video is for you.\n\nIn this video:\n• Why activation happens\n• What your body may be protecting you from\n• The difference between stress and regulation\n• How to respond instead of react\n\n🔗 Free Trigger Calm Journal: [Insert Link]\n\nYou're not broken. You're responding.\n\nWith you in the moment, Barb\n\n#EmotionalRegulation #Overthinking #NervousSystem"},
-
-  {cluster:"Why Your Nervous System Is Loud",seqNum:3,title:"Pinned Comment — Why Your Nervous System Is Loud",format:"Caption",pillar:"Nervous System",status:"Published",platforms:["YouTube"],tags:"pinned comment, CTA",notes:"Pin immediately after publishing.",
-  body:"If your nervous system has been loud lately, you're not alone.\n\nBefore trying to 'fix' it, try asking:\nWhat might this be protecting me from?\n\nIf you'd like something structured to help you unpack it, I made a free Trigger Calm Journal.\nYou can download it here: [Insert Link]\n\nAnd if something in this video resonated, let me know in the comments. I read them all 🤍"},
-
-  {cluster:"Why Your Nervous System Is Loud",seqNum:4,title:"Short: Your Nervous System Isn't Broken",format:"Reel/Short",pillar:"Nervous System",status:"Idea",platforms:["YouTube","Instagram","Facebook","TikTok"],tags:"shorts, reassurance",notes:"Hook: YOUR NERVOUS SYSTEM ISN'T BROKEN — broadest appeal.",
-  body:"Hook on-screen: YOUR NERVOUS SYSTEM ISN'T BROKEN\n\nClip:\n\"A loud nervous system doesn't mean you're broken. It means something inside you feels unsafe, overloaded, or unresolved.\"\n\nCTA: You're not broken. You're responding."},
-
-  {cluster:"Why Your Nervous System Is Loud",seqNum:5,title:"Short: High-Functioning ≠ Regulated",format:"Reel/Short",pillar:"Nervous System",status:"Idea",platforms:["YouTube","Instagram","Facebook","TikTok"],tags:"shorts, high-functioning",notes:"Niche authority builder — strongest for your specific audience.",
-  body:"Hook on-screen: HIGH-FUNCTIONING ≠ REGULATED\n\nClip:\n\"You can look calm on the outside and feel completely flooded on the inside.\"\n\nCTA: Save this if you recognise yourself here."},
-
-  {cluster:"Why Your Nervous System Is Loud",seqNum:6,title:"Short: It's Not Random",format:"Reel/Short",pillar:"Nervous System",status:"Idea",platforms:["YouTube","Instagram","Facebook","TikTok"],tags:"shorts, whispers, protection",notes:"Strong psychological hook.",
-  body:"Hook on-screen: IT'S NOT RANDOM\n\nClip:\n\"It whispers first. And when the whispers are ignored, it gets louder. Not to punish you. To protect you.\"\n\nCTA: Your body isn't against you. It's protecting you."},
-
-  {cluster:"Why Your Nervous System Is Loud",seqNum:7,title:"Short: It's Not Just Stress",format:"Reel/Short",pillar:"Nervous System",status:"Idea",platforms:["YouTube","Instagram","Facebook","TikTok"],tags:"shorts, tiger inbox, viral",notes:"Tiger vs inbox — algorithm gold.",
-  body:"Hook on-screen: IT'S NOT JUST STRESS\n\nClip:\n\"Your body doesn't always know the difference between a tiger and an inbox.\"\n\nCTA: Start here before you try to fix anything."},
-
-  {cluster:"Why Your Nervous System Is Loud",seqNum:8,title:"Short: Ask This Instead",format:"Reel/Short",pillar:"Nervous System",status:"Idea",platforms:["YouTube","Instagram","Facebook","TikTok"],tags:"shorts, reframe, authority",notes:"Authority-building reframe.",
-  body:"Hook on-screen: ASK THIS INSTEAD\n\nClip:\n\"Instead of asking 'How do I shut this down?' try asking 'What is this protecting me from?'\"\n\nCTA: That one question changes everything."},
-
-  {cluster:"If You Feel Overwhelmed Right Now",seqNum:1,title:"Short: If You Feel Overwhelmed Right Now…",format:"Reel/Short",pillar:"Nervous System",status:"Idea",platforms:["YouTube","Instagram","Facebook","TikTok"],tags:"overwhelm, reset, opening",notes:"First short from the Overwhelmed Reset video.",
-  body:"On-screen: IF YOU FEEL OVERWHELMED RIGHT NOW…\n\nVoiceover:\nIf you clicked this because things feel like a lot right now — you're in the right place.\n\nYou are not broken. You're responding.\n\nSometimes overwhelm isn't failure. It's overload.\n\nPause with me.\n\nCTA: Save this for later."},
-
-  {cluster:"If You Feel Overwhelmed Right Now",seqNum:2,title:"Short: Unclench Your Jaw",format:"Reel/Short",pillar:"Nervous System",status:"Idea",platforms:["YouTube","Instagram","Facebook","TikTok"],tags:"grounding, jaw, body reset",notes:"Simple somatic reset — very relatable.",
-  body:"On-screen: UNCLENCH YOUR JAW.\n\nVoiceover:\nUnclench your jaw. Drop your shoulders just a little. And breathe out like you're letting go of a tiny piece of the day.\n\nThat's it.\n\nYou don't need to fix everything. Just come back to your body.\n\nCTA: Take another breath."},
-
-  {cluster:"If You Feel Overwhelmed Right Now",seqNum:3,title:"Short: Name It Gently",format:"Reel/Short",pillar:"Nervous System",status:"Idea",platforms:["YouTube","Instagram","Facebook","TikTok"],tags:"naming feelings, weather metaphor",notes:"Weather metaphor — gentle and accessible.",
-  body:"On-screen: NAME IT GENTLY.\n\nVoiceover:\nJust name it like you're checking the weather.\n\n\"Something feels tight.\"\n\"Something feels loud.\"\n\"Something feels heavy.\"\n\nNaming it creates space.\n\nCTA: Try it now."},
-
-  {cluster:"If You Feel Overwhelmed Right Now",seqNum:4,title:"Short: You Don't Have To Solve Everything",format:"Reel/Short",pillar:"Nervous System",status:"Idea",platforms:["YouTube","Instagram","Facebook","TikTok"],tags:"permission, pressure, relief",notes:"Very shareable — gives permission to stop fixing.",
-  body:"On-screen: YOU DON'T HAVE TO SOLVE EVERYTHING.\n\nVoiceover:\nTry this phrase with me:\n\nI don't have to solve everything right now. I just need one small step back toward centre.\n\nOverwhelm shrinks when we stop fighting it.\n\nCTA: Repeat it once."},
-
-  {cluster:"If You Feel Overwhelmed Right Now",seqNum:5,title:"Short: Ground Yourself in 10 Seconds",format:"Reel/Short",pillar:"Nervous System",status:"Idea",platforms:["YouTube","Instagram","Facebook","TikTok"],tags:"grounding, 10 seconds, safety",notes:"Quick grounding — works anywhere.",
-  body:"On-screen: GROUND YOURSELF IN 10 SECONDS.\n\nVoiceover:\nFind one thing that feels soft. One thing that feels steady. One thing that feels neutral.\n\nThat's grounding. Not pretending everything is fine.\n\nJust reminding your body: I am here. I am safe enough in this moment.\n\nCTA: Come back anytime."},
-
-  {cluster:"Why I Created Trigger Calm",seqNum:1,title:"Short: I Looked Fine. I Was Overwhelmed.",format:"Reel/Short",pillar:"Emotional Triggers",status:"Published",platforms:["YouTube","Instagram","Facebook"],tags:"origin story, overwhelm, authentic",notes:"Origin story short — post first in this series.",
-  body:"On-screen: I LOOKED FINE. I WAS OVERWHELMED.\n\nVoiceover:\nI looked fine. Capable. Organised. Reliable.\n\nBut inside? Tight chest. Racing thoughts. Constant pressure to prove I deserved to be there.\n\nOverwhelm doesn't always look messy. Sometimes it looks productive.\n\nYou're not broken. You're responding.\n\nCTA: Full story on my channel."},
-
-  {cluster:"Why I Created Trigger Calm",seqNum:2,title:"Short: I Was Managing Tasks, Not Myself",format:"Reel/Short",pillar:"Emotional Triggers",status:"Idea",platforms:["YouTube","Instagram","Facebook","TikTok"],tags:"systems, nervous system, origin",notes:"Introduces the Trigger Calm origin.",
-  body:"On-screen: I was managing tasks. Not managing myself.\n\nVoiceover:\nI had systems for work. Spreadsheets. Processes. Deadlines.\n\nBut when my chest felt tight? When my thoughts were racing? I didn't have a system for that.\n\nSo I built one. That became Trigger Calm.\n\nCTA: More on my channel."},
-
-  {cluster:"Why I Created Trigger Calm",seqNum:3,title:"Short: You're Not Broken",format:"Reel/Short",pillar:"Nervous System",status:"Idea",platforms:["YouTube","Instagram","Facebook","TikTok"],tags:"affirmation, core message, save-worthy",notes:"Core brand statement — highest save potential.",
-  body:"On-screen: You're not broken.\n\nVoiceover:\nSometimes overwhelm isn't a sign that you're failing.\n\nIt's a sign your nervous system is overloaded. By pressure. By noise. By trying to hold everything together.\n\nYou don't need to fix yourself. You need a softer place to land.\n\nYou're not broken. You're responding.\n\nCTA: Save this for later."},
-
-  {cluster:"Why I Created Trigger Calm",seqNum:4,title:"Short: I Said Yes Automatically",format:"Reel/Short",pillar:"Emotional Triggers",status:"Idea",platforms:["YouTube","Instagram","Facebook","TikTok"],tags:"boundaries, yes, belonging, people-pleasing",notes:"Strong resonance with over-deliverers.",
-  body:"On-screen: I said yes automatically.\n\nVoiceover:\nI said yes before checking my capacity. Stayed late. Missed dinner. Over-delivered.\n\nNot because anyone demanded it. Because I felt like I had to prove I belonged.\n\nI'm learning to say: \"I can't do that right now.\" Without apologising for existing.\n\nCTA: If this resonates, you're not alone."},
-
-  {cluster:"Why I Created Trigger Calm",seqNum:5,title:"Short: Boundaries Can Be Calm",format:"Reel/Short",pillar:"Nervous System",status:"Idea",platforms:["YouTube","Instagram","Facebook","TikTok"],tags:"boundaries, calm, strength",notes:"Reframes boundaries as gentle — key brand positioning.",
-  body:"On-screen: Boundaries can be calm.\n\nVoiceover:\nI used to think boundaries had to be strong. Firm. Defensive. Sharp.\n\nBut boundaries can be steady. They can be kind. They can be quiet.\n\nThey don't have to be aggressive to be real.\n\nCalm is not weakness. It's regulation.\n\nCTA: More reflections on my channel."},
-
-  {cluster:"Why I Created Trigger Calm",seqNum:6,title:"Thread Post: Overwhelm Doesn't Always Look Like Chaos",format:"Thread",pillar:"Emotional Triggers",status:"Idea",platforms:["Threads"],tags:"thread, overwhelm, competence mask",notes:"High shareability on Threads.",
-  body:"Overwhelm doesn't always look like chaos.\nSometimes it looks like competence.\nSometimes it looks like staying late.\nSometimes it looks like being pleasant.\nSometimes it looks like proving you deserve to be here.\n\nI built Trigger Calm because I needed somewhere softer to land."},
-
-  {cluster:"Strategy & Planning",seqNum:1,title:"The Calm Content Ecosystem — 7-Step Loop",format:"Strategy Note",pillar:"Other",status:"Idea",platforms:[],tags:"strategy, ecosystem, repurposing",notes:"1 idea → 8–12 pieces system.",
-  body:"1. Start With Insight — Write the Substack draft or journal. Messy. Honest.\n2. Extract Core Thesis — e.g. 'A loud nervous system isn't weakness. It's protection.'\n3. Record Long-Form YouTube — 5–8 minutes. Calm delivery. One clear takeaway.\n4. Clip 3–5 Shorts — from that single video.\n5. Publish Substack Version — not a transcript. A reflection version.\n6. Turn into 2–3 Instagram Posts — quote card, reflection caption, short clip.\n7. Repeat Weekly.\n\nPlatform roles:\n🌊 Long-Form = Depth\n✂️ Shorts = Reach\n✍️ Substack = Intimacy\n📱 Instagram/Facebook = Touchpoints"},
-
-  {cluster:"Strategy & Planning",seqNum:2,title:"30-Day Dual-Pillar Content Map",format:"Strategy Note",pillar:"Other",status:"Idea",platforms:[],tags:"strategy, 30 days, schedule",notes:"Week-by-week plan across Trigger Calm + Modern Chaos.",
-  body:"WEEK 1: Long: Why Your Nervous System Is Loud | Shorts (3) | Modern Chaos: AI Glaze-Over | Substack: Nervous System post\n\nWEEK 2: Long: When You Can't Switch Off | Shorts (3) | Modern Chaos: Why Are We Always Tired But Wired? | Substack: Switching Off Reflection\n\nWEEK 3: Long: High-Functioning ≠ Regulated | Shorts (3) | Modern Chaos: Productivity as Personality | Substack: High-Functioning Essay\n\nWEEK 4: Long: You're Not Too Sensitive | Shorts (3) | Modern Chaos: Why Are We All Overthinking? | Substack: Sensitivity as Intelligence\n\nSustainable weekly rhythm: 1 Long-form | 2–3 Shorts | 1 Substack | 1 Modern Chaos piece"},
-
-  {cluster:"Strategy & Planning",seqNum:3,title:"7-Day YouTube Launch Plan",format:"Strategy Note",pillar:"Other",status:"Idea",platforms:["YouTube"],tags:"launch, YouTube, catalog building",notes:"Day-by-day plan for establishing YouTube authority.",
-  body:"Day 1 – Long-Form #2: If You Feel Overwhelmed Right Now\nDay 2 – Short: You are not broken. You're responding.\nDay 3 – Modern Chaos Short: The AI Conversation Glaze-Over\nDay 4 – Long-Form #3: Why Your Nervous System Is Loud\nDay 5 – Short: High-Functioning ≠ Regulated\nDay 6 – Short: Why are we all exhausted but still saying yes?\nDay 7 – Long-Form #4: When You Can't Switch Off\n\nRhythm after Week 1: 1 Long-form + 2 Shorts per week. Alternate Trigger Calm + Modern Chaos.\n\nRemember: Early YouTube is catalog-building, not fame-building. Think: 100 videos, not 1 viral hit."},
-
-  {cluster:"Strategy & Planning",seqNum:4,title:"14-Day Front-Loaded Momentum Plan",format:"Strategy Note",pillar:"Other",status:"Idea",platforms:[],tags:"momentum, 14 days, launch",notes:"Identity → Utility → Community loop.",
-  body:"WEEK 1 – Establish Authority & Safety\nDay 1: Long Video live | Day 2: Short: Unclench Your Jaw | Day 3: Short: You Don't Have to Solve Everything | Day 4: Carousel: I Looked Fine / I Was Overwhelmed | Day 5: Short: Name It Gently | Day 6: Substack: Why I Needed a System for My Nervous System | Day 7: Engagement: What does overwhelm look like for you?\n\nWEEK 2 – Build Pattern Recognition\nDay 8: Short: High Performers Struggle With This | Day 9: Quote: You're not broken. You're responding. | Day 10: Short: Ground Yourself in 10 Seconds | Day 11: Carousel: 5 Signs You're Internally Overwhelmed | Day 12: Substack Note | Day 13: Short: I Said Yes Automatically | Day 14: Reflection: What I'm Learning About Boundaries\n\nLoop: Identity → Utility → Community. Repeat."}
-];
-
-// ── Simple SVG Bar Chart ───────────────────────────────────────────────────
-function BarChart({data}){
-  if(!data||data.length===0)return <div style={{color:"#aaa",fontSize:"0.82rem",textAlign:"center",padding:"40px 0"}}>No data yet</div>;
-  const max=Math.max(...data.map(d=>d.views),1);
-  const h=160,pad=8,bw=Math.max(20,Math.floor((280-pad*2)/data.length)-6);
+// ── Modal shell ──────────────────────────────────────────────────────────────
+function Modal({title,onClose,children,wide}){
   return(
-    <svg width="100%" viewBox={`0 0 280 ${h+30}`} style={{overflow:"visible"}}>
-      {data.map((d,i)=>{
-        const bh=Math.max((d.views/max)*(h-10),d.views>0?4:0);
-        const x=pad+i*((280-pad*2)/data.length)+((280-pad*2)/data.length-bw)/2;
-        const y=h-bh;
-        return(
-          <g key={d.name}>
-            <rect x={x} y={y} width={bw} height={bh} fill={PLAT_C[d.name]||"#7a9e7e"} rx="4" opacity="0.9"/>
-            <text x={x+bw/2} y={h+14} textAnchor="middle" fontSize="9" fill="#9e9e9e" fontFamily="Lato,sans-serif">{d.name.slice(0,2)}</text>
-            {d.views>0&&<text x={x+bw/2} y={y-3} textAnchor="middle" fontSize="8" fill="#7a7a7a" fontFamily="Lato,sans-serif">{d.views>=1000?(d.views/1000).toFixed(1)+"k":d.views}</text>}
-          </g>
-        );
-      })}
-    </svg>
-  );
-}
-
-// ── Modal ──────────────────────────────────────────────────────────────────
-function Modal({title,onClose,children,wide=false}){
-  return(
-    <div onClick={e=>{if(e.target===e.currentTarget)onClose();}} style={{position:"fixed",inset:0,background:"rgba(20,18,14,0.58)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:1000,padding:"20px",backdropFilter:"blur(3px)"}}>
-      <div style={{background:"white",borderRadius:"18px",padding:"28px 30px",width:"100%",maxWidth:wide?"720px":"460px",maxHeight:"92vh",overflowY:"auto",boxShadow:"0 24px 60px rgba(0,0,0,0.22)"}}>
+    <div onClick={e=>{if(e.target===e.currentTarget)onClose();}} style={{position:"fixed",inset:0,background:"rgba(20,15,10,0.6)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:100,padding:"20px",backdropFilter:"blur(4px)"}}>
+      <div style={{background:"white",borderRadius:"18px",padding:"28px 30px",width:"100%",maxWidth:wide?"740px":"480px",maxHeight:"92vh",overflowY:"auto",boxShadow:"0 28px 70px rgba(0,0,0,0.25)"}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"22px"}}>
-          <div style={{fontFamily:"'Playfair Display',serif",fontSize:"1.1rem",fontWeight:"600",color:"#2d2d2d"}}>{title}</div>
+          <div style={{fontFamily:"'Playfair Display',serif",fontSize:"1.1rem",fontWeight:"700",color:"#2d2d2d"}}>{title}</div>
           <button onClick={onClose} style={{background:"none",border:"none",cursor:"pointer",fontSize:"1.5rem",color:"#bbb",lineHeight:1}}>×</button>
         </div>
         {children}
@@ -172,512 +59,389 @@ function Modal({title,onClose,children,wide=false}){
   );
 }
 
-const StatBox=({value,label,color="#7a9e7e"})=>(
-  <div style={{...card,textAlign:"center",padding:"16px 12px"}}>
-    <div style={{fontSize:"1.9rem",fontWeight:"800",color,lineHeight:1}}>{value}</div>
-    <div style={{fontSize:"0.71rem",color:"#9e9e9e",marginTop:"4px",letterSpacing:"0.04em"}}>{label}</div>
-  </div>
-);
-
-// ── Content Card ───────────────────────────────────────────────────────────
-function ContentCard({item,onClick,cc,showSeq}){
-  const sc=STATUS_C[item.status]||"#9e9e9e";
+// ── Content card ─────────────────────────────────────────────────────────────
+function Card({item,onClick,onStatusChange}){
+  const sc=STATUS_C[item.status]||STATUS_C.Available;
+  const next=item.status==="Available"?"In GHL":item.status==="In GHL"?"Posted":"Available";
   return(
-    <div onClick={onClick} className="hover-lift" style={{...card,cursor:"pointer",borderLeft:`3px solid ${cc||sc}`,position:"relative"}}>
-      {showSeq&&item.seqNum&&<div style={{position:"absolute",top:"12px",right:"12px",width:"22px",height:"22px",borderRadius:"50%",background:`${cc}22`,color:cc,display:"flex",alignItems:"center",justifyContent:"center",fontSize:"0.68rem",fontWeight:"800"}}>{item.seqNum}</div>}
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"8px",paddingRight:showSeq&&item.seqNum?"28px":"0"}}>
-        <span style={bdg(sc)}>{item.status}</span>
-        {item.pillar&&<span style={{fontSize:"0.69rem",color:"#a0a098"}}>{item.pillar}</span>}
+    <div style={{background:"white",borderRadius:"14px",boxShadow:"0 2px 10px rgba(0,0,0,0.06)",borderTop:`3px solid ${sc}`,overflow:"hidden",display:"flex",flexDirection:"column"}}>
+      {/* Hook — clickable */}
+      <div className="card-hover" onClick={onClick} style={{padding:"16px 18px 12px",flex:1}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:"8px",gap:"8px"}}>
+          <div style={{fontFamily:"'Playfair Display',serif",fontWeight:"700",fontSize:"0.95rem",color:"#2d2d2d",lineHeight:"1.35",flex:1}}>{item.hook||item.title||"Untitled"}</div>
+          <span style={bdg(sc)}>{item.status}</span>
+        </div>
+        {item.caption&&<div style={{fontSize:"0.78rem",color:"#6e6e6e",lineHeight:"1.6",marginBottom:"10px"}}>{trunc(item.caption,130)}</div>}
+        <div style={{display:"flex",gap:"4px",flexWrap:"wrap",marginBottom:item.visualDir||item.triggerWord?"8px":"0"}}>
+          {(item.platforms||[]).map(p=><span key={p} style={{...bdg(PLAT_C[p]||"#9e9e9e"),fontSize:"0.6rem"}}>{p}</span>)}
+          {item.format&&<span style={{...bdg("#9e9e9e"),fontSize:"0.6rem"}}>{item.format}</span>}
+        </div>
+        {item.visualDir&&<div style={{fontSize:"0.72rem",color:"#a0a098",marginTop:"4px"}}>📷 {trunc(item.visualDir,60)}</div>}
+        {item.triggerWord&&<div style={{fontSize:"0.72rem",color:"#7aa8a0",marginTop:"3px"}}>💬 Comment: <strong>{item.triggerWord}</strong></div>}
+        {item.productCTA&&<div style={{fontSize:"0.72rem",color:"#b07040",marginTop:"3px"}}>🛒 {item.productCTA}</div>}
+        {item.canvaLink&&<div style={{fontSize:"0.72rem",marginTop:"3px"}}><a href={item.canvaLink} target="_blank" rel="noopener" onClick={e=>e.stopPropagation()} style={{color:"#652cd1",textDecoration:"none"}}>🎨 Open in Canva ↗</a></div>}
       </div>
-      <div style={{fontFamily:"'Playfair Display',serif",fontWeight:"600",fontSize:"0.9rem",color:"#2d2d2d",marginBottom:"7px",lineHeight:"1.35",paddingRight:showSeq&&item.seqNum?"28px":"0"}}>{item.title||"Untitled"}</div>
-      <div style={{fontSize:"0.77rem",color:"#6e6e6e",lineHeight:"1.55",marginBottom:"10px"}}>{trunc(item.body||"",100)}</div>
-      <div style={{display:"flex",gap:"4px",flexWrap:"wrap"}}>
-        {(item.platforms||[]).map(p=><span key={p} style={{...bdg(PLAT_C[p]||"#9e9e9e"),fontSize:"0.61rem"}}>{p}</span>)}
-        {item.format&&<span style={{...bdg("#9e9e9e"),fontSize:"0.61rem"}}>{item.format}</span>}
-      </div>
-      {item.datePublished&&<div style={{fontSize:"0.68rem",color:"#b8b8b0",marginTop:"8px"}}>{fmtDate(item.datePublished)}</div>}
-    </div>
-  );
-}
-
-// ── Library Tab ────────────────────────────────────────────────────────────
-function LibraryTab({library,filtered,search,setSearch,fPillar,setFPillar,fStatus,setFStatus,fPlatform,setFPlatform,fCluster,setFCluster,grouped,setGrouped,onAdd,onImport,onView,getCC}){
-  const clusters=[...new Set(library.map(i=>i.cluster).filter(Boolean))];
-  const sel={...inp,maxWidth:"148px",cursor:"pointer"};
-  const sorted=grouped?[...filtered].sort((a,b)=>{const ci=clusters.indexOf(a.cluster)-clusters.indexOf(b.cluster);return ci!==0?ci:(a.seqNum||99)-(b.seqNum||99);}):filtered;
-  const gmap={};
-  if(grouped)sorted.forEach(i=>{const k=i.cluster||"Uncategorised";if(!gmap[k])gmap[k]=[];gmap[k].push(i);});
-
-  return(
-    <div>
-      <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:"10px",marginBottom:"18px"}}>
-        {[{l:"TOTAL",v:library.length,c:"#7a9e7e"},{l:"PUBLISHED",v:library.filter(i=>i.status==="Published").length,c:"#5a8f5a"},{l:"REPURPOSED",v:library.filter(i=>i.status==="Repurposed").length,c:"#b07040"},{l:"DRAFTED",v:library.filter(i=>i.status==="Drafted").length,c:"#4a8fa0"},{l:"IDEAS",v:library.filter(i=>i.status==="Idea").length,c:"#c49a3c"}].map(s=><StatBox key={s.l} value={s.v} label={s.l} color={s.c}/>)}
-      </div>
-      <div style={{display:"flex",gap:"8px",marginBottom:"14px",flexWrap:"wrap",alignItems:"center"}}>
-        <input style={{...inp,maxWidth:"200px"}} placeholder="🔍  Search…" value={search} onChange={e=>setSearch(e.target.value)}/>
-        <select style={sel} value={fCluster} onChange={e=>setFCluster(e.target.value)}><option value="All">All Series</option>{clusters.map(c=><option key={c}>{c}</option>)}</select>
-        <select style={sel} value={fPillar} onChange={e=>setFPillar(e.target.value)}><option value="All">All Pillars</option>{PILLARS.map(p=><option key={p}>{p}</option>)}</select>
-        <select style={sel} value={fStatus} onChange={e=>setFStatus(e.target.value)}><option value="All">All Status</option>{STATUSES.map(s=><option key={s}>{s}</option>)}</select>
-        <select style={sel} value={fPlatform} onChange={e=>setFPlatform(e.target.value)}><option value="All">All Platforms</option>{PLATFORMS.map(p=><option key={p}>{p}</option>)}</select>
-        <button onClick={()=>setGrouped(!grouped)} style={{...sBtn(),background:grouped?"#f0f7f0":"white",color:grouped?"#5a8f5a":"#4a4a4a",borderColor:grouped?"#7a9e7e":"#e4e0d8",fontSize:"0.78rem"}}>
-          {grouped?"✦ Series On":"◻ Series Off"}
-        </button>
-        <div style={{marginLeft:"auto",display:"flex",gap:"8px"}}>
-          <button style={sBtn()} onClick={onImport}>⬆ Import CSV</button>
-          <button style={pBtn()} onClick={onAdd}>+ Add Content</button>
-        </div>
-      </div>
-      <div style={{color:"#aaa",fontSize:"0.76rem",marginBottom:"14px"}}>{filtered.length} item{filtered.length!==1?"s":""}{(search||fCluster!=="All"||fPillar!=="All"||fStatus!=="All"||fPlatform!=="All")?" matching filters":" in library"}{grouped?" · grouped by series":""}</div>
-
-      {filtered.length===0?(
-        <div style={{...card,textAlign:"center",padding:"60px 40px"}}>
-          {library.length===0?(<><div style={{fontSize:"3rem",marginBottom:"14px"}}>📝</div><div style={{fontFamily:"'Playfair Display',serif",fontSize:"1.15rem",color:"#2d2d2d",marginBottom:"8px"}}>Your library is empty</div><div style={{color:"#9e9e9e",fontSize:"0.85rem",marginBottom:"20px"}}>Add content manually or import your Metricool CSV</div><div style={{display:"flex",gap:"10px",justifyContent:"center"}}><button style={sBtn()} onClick={onImport}>⬆ Import CSV</button><button style={pBtn()} onClick={onAdd}>+ Add First Item</button></div></>)
-          :<div style={{color:"#9e9e9e",fontSize:"0.88rem"}}>No items match your filters</div>}
-        </div>
-      ):grouped?(
-        <div style={{display:"flex",flexDirection:"column",gap:"24px"}}>
-          {Object.entries(gmap).map(([name,items])=>{
-            const cc=getCC(name);
-            const pub=items.filter(i=>i.status==="Published").length;
-            const rep=items.filter(i=>i.status==="Repurposed").length;
-            return(
-              <div key={name}>
-                <div style={{display:"flex",alignItems:"center",gap:"12px",marginBottom:"12px"}}>
-                  <div style={{height:"2px",flex:"0 0 20px",background:`${cc}50`,borderRadius:"2px"}}/>
-                  <div style={{display:"flex",alignItems:"center",gap:"7px",flexWrap:"wrap"}}>
-                    <span style={{fontFamily:"'Playfair Display',serif",fontWeight:"700",color:cc,fontSize:"0.95rem"}}>{name}</span>
-                    <span style={bdg(cc)}>{items.length} items</span>
-                    {pub>0&&<span style={bdg(STATUS_C.Published)}>{pub} published</span>}
-                    {rep>0&&<span style={bdg(STATUS_C.Repurposed)}>{rep} repurposed</span>}
-                  </div>
-                  <div style={{height:"2px",flex:1,background:`${cc}30`,borderRadius:"2px"}}/>
-                </div>
-                <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(285px,1fr))",gap:"12px"}}>
-                  {items.map(item=><ContentCard key={item.id} item={item} onClick={()=>onView(item)} cc={cc} showSeq/>)}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      ):(
-        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(285px,1fr))",gap:"13px"}}>
-          {sorted.map(item=><ContentCard key={item.id} item={item} onClick={()=>onView(item)} cc={getCC(item.cluster)}/>)}
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ── Performance Tab ────────────────────────────────────────────────────────
-function PerformanceTab({performance,onImport,onClear}){
-  const [sortBy,setSortBy]=useState("views");
-  const [fp,setFp]=useState("All");
-  const filtered=fp==="All"?performance:performance.filter(p=>p.platform===fp);
-  const tv=filtered.reduce((s,p)=>s+(+p.views||0),0);
-  const ae=filtered.length?(filtered.reduce((s,p)=>s+(+p.engagement||0),0)/filtered.length).toFixed(1):0;
-  const tl=filtered.reduce((s,p)=>s+(+p.likes||0),0);
-  const top=[...filtered].sort((a,b)=>(+b[sortBy]||0)-(+a[sortBy]||0)).slice(0,10);
-  const pd=PLATFORMS.filter(p=>p!=="Substack"&&p!=="Threads").map(p=>({name:p,views:performance.filter(r=>r.platform===p).reduce((s,r)=>s+(+r.views||0),0),count:performance.filter(r=>r.platform===p).length})).filter(p=>p.count>0);
-  const sel={...inp,maxWidth:"138px",cursor:"pointer"};
-
-  return(
-    <div>
-      <div style={{display:"flex",gap:"8px",marginBottom:"20px",flexWrap:"wrap",alignItems:"center"}}>
-        <div style={{fontFamily:"'Playfair Display',serif",fontSize:"0.95rem",color:"#2d2d2d",marginRight:"4px"}}>Import performance data:</div>
-        {PLATFORMS.filter(p=>p!=="Substack"&&p!=="Threads").map(p=>(
-          <button key={p} onClick={()=>onImport(p)} style={{...sBtn(),borderLeft:`3px solid ${PLAT_C[p]}`,fontSize:"0.79rem",padding:"7px 12px"}}>{p}</button>
-        ))}
-        {performance.length>0&&<button onClick={onClear} style={{...sBtn(),color:"#c47050",marginLeft:"auto",fontSize:"0.78rem"}}>Clear All</button>}
-      </div>
-      {performance.length===0?(
-        <div style={{...card,textAlign:"center",padding:"60px 40px"}}>
-          <div style={{fontSize:"3rem",marginBottom:"14px"}}>📊</div>
-          <div style={{fontFamily:"'Playfair Display',serif",fontSize:"1.15rem",marginBottom:"8px"}}>No performance data yet</div>
-          <div style={{color:"#9e9e9e",fontSize:"0.85rem"}}>Import your CSV exports from Facebook, Instagram, YouTube or TikTok above</div>
-        </div>
-      ):(
-        <>
-          <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:"10px",marginBottom:"18px"}}>
-            <StatBox value={filtered.length} label="RECORDS" color="#7a9e7e"/>
-            <StatBox value={tv.toLocaleString()} label="TOTAL VIEWS" color="#4a8fa0"/>
-            <StatBox value={tl.toLocaleString()} label="TOTAL LIKES" color="#b07040"/>
-            <StatBox value={`${ae}%`} label="AVG ENGAGE" color="#c49a3c"/>
-          </div>
-          <div style={{display:"grid",gridTemplateColumns:"300px 1fr",gap:"14px"}}>
-            <div style={card}>
-              <div style={{fontFamily:"'Playfair Display',serif",fontWeight:"600",marginBottom:"14px",fontSize:"0.95rem"}}>Views by Platform</div>
-              <BarChart data={pd}/>
-            </div>
-            <div style={card}>
-              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"12px"}}>
-                <div style={{fontFamily:"'Playfair Display',serif",fontWeight:"600",fontSize:"0.95rem"}}>Top Performers</div>
-                <div style={{display:"flex",gap:"6px"}}>
-                  <select style={sel} value={fp} onChange={e=>setFp(e.target.value)}><option value="All">All Platforms</option>{PLATFORMS.map(p=><option key={p}>{p}</option>)}</select>
-                  <select style={sel} value={sortBy} onChange={e=>setSortBy(e.target.value)}><option value="views">By Views</option><option value="likes">By Likes</option><option value="engagement">By Engagement</option><option value="avgWatch">By Watch Time</option></select>
-                </div>
-              </div>
-              <div style={{display:"flex",flexDirection:"column",gap:"5px",maxHeight:"260px",overflowY:"auto"}}>
-                {top.map((p,i)=>(
-                  <div key={p.id} style={{display:"flex",alignItems:"center",gap:"10px",padding:"8px 10px",borderRadius:"8px",background:i===0?"#f4f9f4":i<3?"#fafaf8":"transparent"}}>
-                    <div style={{width:"22px",height:"22px",borderRadius:"50%",background:i<3?"#7a9e7e":"#e8e4dc",color:i<3?"white":"#9e9e9e",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"0.68rem",fontWeight:"800",flexShrink:0}}>{i+1}</div>
-                    <div style={{flex:1,minWidth:0}}>
-                      <div style={{fontSize:"0.79rem",fontWeight:"600",color:"#2d2d2d",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{trunc(p.title||"Untitled",46)}</div>
-                      <div style={{fontSize:"0.68rem",color:"#a0a0a0"}}>{p.platform} · {fmtDate(p.date)}</div>
-                    </div>
-                    <div style={{textAlign:"right",flexShrink:0}}>
-                      <div style={{fontSize:"0.83rem",fontWeight:"700",color:"#7a9e7e"}}>{(+(p[sortBy])||0).toLocaleString()}</div>
-                      <div style={{fontSize:"0.64rem",color:"#b0b0b0"}}>{sortBy}</div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </>
-      )}
-    </div>
-  );
-}
-
-// ── Planner Tab ────────────────────────────────────────────────────────────
-function PlannerTab({library,performance,getCC}){
-  const clusters=[...new Set(library.map(i=>i.cluster).filter(Boolean))];
-  const toRepurpose=library.filter(i=>i.status==="Published");
-  const drafts=library.filter(i=>i.status==="Drafted");
-  const topPerf=[...performance].sort((a,b)=>(+b.views||0)-(+a.views||0)).slice(0,5);
-  const pillarGaps=PILLARS.map((p,idx)=>({name:p,count:library.filter(i=>i.pillar===p).length,fill:PILLAR_C[idx]}));
-  const seriesData=clusters.map(c=>{
-    const items=library.filter(i=>i.cluster===c);
-    const pub=items.filter(i=>i.status==="Published").length;
-    const rep=items.filter(i=>i.status==="Repurposed").length;
-    const idea=items.filter(i=>i.status==="Idea").length;
-    const next=items.filter(i=>i.status==="Idea"||i.status==="Drafted").sort((a,b)=>(a.seqNum||99)-(b.seqNum||99))[0];
-    const pct=items.length>0?Math.round((pub+rep)/items.length*100):0;
-    return{name:c,total:items.length,pub,rep,idea,next,pct,color:getCC(c)};
-  });
-
-  return(
-    <div style={{display:"flex",flexDirection:"column",gap:"16px"}}>
-      <div style={card}>
-        <div style={{display:"flex",alignItems:"center",gap:"10px",marginBottom:"18px"}}>
-          <div style={{width:"32px",height:"32px",borderRadius:"8px",background:"#f0f7f0",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"1.1rem"}}>📂</div>
-          <div><div style={{fontFamily:"'Playfair Display',serif",fontWeight:"600",fontSize:"0.95rem"}}>Content Series Progress</div><div style={{fontSize:"0.73rem",color:"#a0a098"}}>What's done, what's next — across every series</div></div>
-        </div>
-        {clusters.length===0?<div style={{textAlign:"center",color:"#aaa",padding:"20px",fontSize:"0.83rem"}}>Add content with a Series name to track progress</div>:(
-          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(260px,1fr))",gap:"12px"}}>
-            {seriesData.map(s=>(
-              <div key={s.name} style={{padding:"14px 16px",borderRadius:"10px",background:"#f8f7f4",borderTop:`3px solid ${s.color}`}}>
-                <div style={{fontFamily:"'Playfair Display',serif",fontWeight:"600",fontSize:"0.87rem",color:"#2d2d2d",marginBottom:"10px",lineHeight:"1.3"}}>{s.name}</div>
-                <div style={{display:"flex",gap:"5px",flexWrap:"wrap",marginBottom:"10px"}}>
-                  {s.pub>0&&<span style={bdg(STATUS_C.Published)}>{s.pub} published</span>}
-                  {s.rep>0&&<span style={bdg(STATUS_C.Repurposed)}>{s.rep} repurposed</span>}
-                  {s.idea>0&&<span style={bdg(STATUS_C.Idea)}>{s.idea} to do</span>}
-                </div>
-                <div style={{marginBottom:"8px"}}>
-                  <div style={{display:"flex",justifyContent:"space-between",marginBottom:"3px"}}>
-                    <span style={{fontSize:"0.71rem",color:"#9e9e9e"}}>Progress</span>
-                    <span style={{fontSize:"0.71rem",fontWeight:"700",color:s.color}}>{s.pct}%</span>
-                  </div>
-                  <div style={{height:"5px",borderRadius:"3px",background:"#e8e4dc",overflow:"hidden"}}>
-                    <div style={{height:"100%",borderRadius:"3px",background:s.color,width:`${Math.max(s.pct,s.pct>0?4:0)}%`,transition:"width 0.5s"}}/>
-                  </div>
-                </div>
-                {s.next?<div style={{fontSize:"0.72rem",color:"#7a9e7e"}}>▶ Next: {trunc(s.next.title,36)}</div>:<div style={{fontSize:"0.72rem",color:"#b07040"}}>✓ All items actioned</div>}
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"16px"}}>
-        <div style={card}>
-          <div style={{display:"flex",alignItems:"center",gap:"10px",marginBottom:"14px"}}>
-            <div style={{width:"32px",height:"32px",borderRadius:"8px",background:"#f0f7f0",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"1.1rem"}}>♻️</div>
-            <div><div style={{fontFamily:"'Playfair Display',serif",fontWeight:"600",fontSize:"0.93rem"}}>Repurposing Queue</div><div style={{fontSize:"0.73rem",color:"#a0a098"}}>Published — ready to reuse</div></div>
-            <span style={{...bdg("#5a8f5a"),marginLeft:"auto"}}>{toRepurpose.length}</span>
-          </div>
-          {toRepurpose.length===0?<div style={{textAlign:"center",color:"#aaa",padding:"20px",fontSize:"0.83rem"}}>No published content yet</div>:(
-            <div style={{display:"flex",flexDirection:"column",gap:"6px",maxHeight:"220px",overflowY:"auto"}}>
-              {toRepurpose.map(item=>(
-                <div key={item.id} style={{padding:"9px 11px",borderRadius:"8px",background:"#f8f7f4",borderLeft:`3px solid ${getCC(item.cluster)}`}}>
-                  <div style={{fontSize:"0.81rem",fontWeight:"600",marginBottom:"3px"}}>{trunc(item.title||"Untitled",48)}</div>
-                  <div style={{display:"flex",gap:"5px",flexWrap:"wrap"}}>
-                    {item.cluster&&<span style={{fontSize:"0.67rem",color:"#a0a098"}}>{trunc(item.cluster,24)}</span>}
-                    {(item.platforms||[]).slice(0,3).map(p=><span key={p} style={{...bdg(PLAT_C[p]||"#9e9e9e"),fontSize:"0.59rem"}}>{p.slice(0,2)}</span>)}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-        <div style={card}>
-          <div style={{display:"flex",alignItems:"center",gap:"10px",marginBottom:"14px"}}>
-            <div style={{width:"32px",height:"32px",borderRadius:"8px",background:"#f4f0f8",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"1.1rem"}}>🏛</div>
-            <div><div style={{fontFamily:"'Playfair Display',serif",fontWeight:"600",fontSize:"0.93rem"}}>Pillar Coverage</div><div style={{fontSize:"0.73rem",color:"#a0a098"}}>Where your content lives</div></div>
-          </div>
-          {library.length===0?<div style={{textAlign:"center",color:"#aaa",padding:"20px",fontSize:"0.83rem"}}>Add content to see coverage</div>:(
-            <div style={{display:"flex",flexDirection:"column",gap:"8px"}}>
-              {pillarGaps.map(p=>(
-                <div key={p.name}>
-                  <div style={{display:"flex",justifyContent:"space-between",marginBottom:"3px"}}>
-                    <span style={{fontSize:"0.77rem",color:p.count<2?"#c49a3c":"#2d2d2d",fontWeight:p.count<2?"700":"400"}}>{p.name}{p.count<2?" ⚠️":""}</span>
-                    <span style={{fontSize:"0.77rem",fontWeight:"700",color:p.fill}}>{p.count}</span>
-                  </div>
-                  <div style={{height:"5px",borderRadius:"3px",background:"#f0ede8",overflow:"hidden"}}>
-                    <div style={{height:"100%",borderRadius:"3px",background:p.fill,width:`${library.length?Math.max(p.count/library.length*100,p.count>0?4:0):0}%`,transition:"width 0.5s"}}/>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
-
-      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"16px"}}>
-        <div style={card}>
-          <div style={{display:"flex",alignItems:"center",gap:"10px",marginBottom:"14px"}}>
-            <div style={{width:"32px",height:"32px",borderRadius:"8px",background:"#f0f8f8",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"1.1rem"}}>✏️</div>
-            <div><div style={{fontFamily:"'Playfair Display',serif",fontWeight:"600",fontSize:"0.93rem"}}>Drafts to Finish</div><div style={{fontSize:"0.73rem",color:"#a0a098"}}>Get these over the line</div></div>
-            <span style={{...bdg("#4a8fa0"),marginLeft:"auto"}}>{drafts.length}</span>
-          </div>
-          {drafts.length===0?<div style={{textAlign:"center",color:"#aaa",padding:"20px",fontSize:"0.83rem"}}>No drafts — all clear 🎉</div>:(
-            <div style={{display:"flex",flexDirection:"column",gap:"6px",maxHeight:"180px",overflowY:"auto"}}>
-              {drafts.map(item=><div key={item.id} style={{padding:"9px 11px",borderRadius:"8px",background:"#f8f7f4"}}><div style={{fontSize:"0.81rem",fontWeight:"600"}}>{item.title||"Untitled"}</div><div style={{fontSize:"0.69rem",color:"#a0a098"}}>{item.format} · {item.pillar}</div></div>)}
-            </div>
-          )}
-        </div>
-        <div style={card}>
-          <div style={{display:"flex",alignItems:"center",gap:"10px",marginBottom:"14px"}}>
-            <div style={{width:"32px",height:"32px",borderRadius:"8px",background:"#fff8f0",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"1.1rem"}}>⭐</div>
-            <div><div style={{fontFamily:"'Playfair Display',serif",fontWeight:"600",fontSize:"0.93rem"}}>Double Down On These</div><div style={{fontSize:"0.73rem",color:"#a0a098"}}>Your highest performers</div></div>
-          </div>
-          {topPerf.length===0?<div style={{textAlign:"center",color:"#aaa",padding:"20px",fontSize:"0.83rem"}}>Import performance data to unlock this</div>:(
-            <div style={{display:"flex",flexDirection:"column",gap:"6px",maxHeight:"180px",overflowY:"auto"}}>
-              {topPerf.map((p,i)=>(
-                <div key={p.id} style={{padding:"9px 11px",borderRadius:"8px",background:i===0?"#fdf8f2":"#f8f7f4",display:"flex",gap:"10px",alignItems:"center"}}>
-                  <div style={{width:"22px",height:"22px",borderRadius:"50%",background:i<3?"#c4a882":"#e8e4dc",color:i<3?"white":"#9e9e9e",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"0.68rem",fontWeight:"800",flexShrink:0}}>{i+1}</div>
-                  <div style={{flex:1,minWidth:0}}>
-                    <div style={{fontSize:"0.79rem",fontWeight:"600",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{trunc(p.title||"Untitled",42)}</div>
-                    <div style={{fontSize:"0.68rem",color:"#a0a0a0"}}>{p.platform} · {(+p.views||0).toLocaleString()} views</div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
+      {/* Status toggle */}
+      <div style={{borderTop:"1px solid #f0ede8",padding:"10px 18px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+        <span style={{fontSize:"0.71rem",color:"#b8b8b0"}}>{item.date?`📅 ${item.date}`:""}&nbsp;</span>
+        <button onClick={e=>{e.stopPropagation();onStatusChange(item.id,next);}} style={{padding:"4px 12px",borderRadius:"20px",border:`1.5px solid ${STATUS_C[next]}`,background:"white",color:STATUS_C[next],cursor:"pointer",fontSize:"0.7rem",fontWeight:"700"}}>→ {next}</button>
       </div>
     </div>
   );
 }
 
-// ── Add/Edit Modal ─────────────────────────────────────────────────────────
-function AddModal({item,onClose,onSave,clusters}){
-  const [f,setF]=useState({title:item?.title||"",body:item?.body||"",pillar:item?.pillar||PILLARS[0],format:item?.format||FORMATS[0],platforms:item?.platforms||[],status:item?.status||"Idea",datePublished:item?.datePublished?item.datePublished.slice(0,10):"",tags:item?.tags||"",notes:item?.notes||"",cluster:item?.cluster||"",seqNum:item?.seqNum||"",id:item?.id||null});
-  const s=(k,v)=>setF(p=>({...p,[k]:v}));
-  const tp=p=>s("platforms",f.platforms.includes(p)?f.platforms.filter(x=>x!==p):[...f.platforms,p]);
-  return(
-    <Modal title={item?.id?"Edit Content":"Add Content"} onClose={onClose} wide>
-      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"13px"}}>
-        <div style={{gridColumn:"1/-1"}}><Lbl>Title</Lbl><input style={inp} value={f.title} onChange={e=>s("title",e.target.value)} placeholder="What is this piece about?"/></div>
-        <div style={{gridColumn:"1/-1"}}><Lbl>Body / Script</Lbl><textarea style={{...inp,minHeight:"130px",resize:"vertical"}} value={f.body} onChange={e=>s("body",e.target.value)} placeholder="Paste your script, caption, newsletter, or post here…"/></div>
-        <div><Lbl>Content Pillar</Lbl><select style={{...inp,cursor:"pointer"}} value={f.pillar} onChange={e=>s("pillar",e.target.value)}>{PILLARS.map(p=><option key={p}>{p}</option>)}</select></div>
-        <div><Lbl>Format</Lbl><select style={{...inp,cursor:"pointer"}} value={f.format} onChange={e=>s("format",e.target.value)}>{FORMATS.map(x=><option key={x}>{x}</option>)}</select></div>
-        <div><Lbl>Status</Lbl><select style={{...inp,cursor:"pointer"}} value={f.status} onChange={e=>s("status",e.target.value)}>{STATUSES.map(x=><option key={x}>{x}</option>)}</select></div>
-        <div><Lbl>Date Published</Lbl><input type="date" style={inp} value={f.datePublished} onChange={e=>s("datePublished",e.target.value)}/></div>
-        <div><Lbl>Content Series</Lbl><input style={inp} value={f.cluster} onChange={e=>s("cluster",e.target.value)} list="clist" placeholder="e.g. Why Your Nervous System Is Loud"/><datalist id="clist">{clusters.map(c=><option key={c} value={c}/>)}</datalist></div>
-        <div><Lbl>Order in Series (#)</Lbl><input type="number" style={inp} value={f.seqNum} onChange={e=>s("seqNum",e.target.value)} placeholder="e.g. 3" min="1"/></div>
-        <div style={{gridColumn:"1/-1"}}><Lbl>Platforms</Lbl>
-          <div style={{display:"flex",gap:"7px",flexWrap:"wrap"}}>
-            {PLATFORMS.map(p=><button key={p} type="button" onClick={()=>tp(p)} style={{padding:"6px 13px",borderRadius:"20px",border:`2px solid ${f.platforms.includes(p)?PLAT_C[p]:"#e4e0d8"}`,background:f.platforms.includes(p)?`${PLAT_C[p]}15`:"white",color:f.platforms.includes(p)?PLAT_C[p]:"#9e9e9e",cursor:"pointer",fontSize:"0.79rem",fontWeight:"600"}}>{p}</button>)}
-          </div>
-        </div>
-        <div><Lbl>Tags</Lbl><input style={inp} value={f.tags} onChange={e=>s("tags",e.target.value)} placeholder="breathing, regulation, HSP…"/></div>
-        <div><Lbl>Notes to Self</Lbl><input style={inp} value={f.notes} onChange={e=>s("notes",e.target.value)} placeholder="Any notes for future you…"/></div>
-      </div>
-      <div style={{display:"flex",justifyContent:"flex-end",gap:"9px",marginTop:"20px"}}>
-        <button style={sBtn()} onClick={onClose}>Cancel</button>
-        <button style={pBtn()} onClick={()=>{if(!f.title&&!f.body)return alert("Please add a title or body");onSave({...f,datePublished:f.datePublished||null,seqNum:f.seqNum?+f.seqNum:undefined});}}>Save Content</button>
-      </div>
-    </Modal>
-  );
-}
+// ── Detail modal ─────────────────────────────────────────────────────────────
+function DetailModal({item,onClose,onEdit,onDelete,onStatusChange}){
+  const sc=STATUS_C[item.status]||STATUS_C.Available;
+  const [copied,setCopied]=useState(null);
+  const copy=(text,field)=>{navigator.clipboard.writeText(text).then(()=>{setCopied(field);setTimeout(()=>setCopied(null),1500);});};
+  const CopyBtn=({text,field})=><button onClick={()=>copy(text,field)} style={{padding:"3px 9px",borderRadius:"6px",border:"1px solid #e4e0d8",background:"white",cursor:"pointer",fontSize:"0.68rem",color:copied===field?"#7a9e7e":"#9e9e9e",marginLeft:"8px"}}>{copied===field?"✓ Copied":"Copy"}</button>;
 
-// ── Import Library Modal ───────────────────────────────────────────────────
-function ImportLibModal({onClose,onImport}){
-  const [preview,setPreview]=useState(null);const [mapped,setMapped]=useState([]);const [err,setErr]=useState(null);
-  const hf=e=>{const file=e.target.files[0];if(!file)return;
-    Papa.parse(file,{header:true,skipEmptyLines:true,dynamicTyping:false,complete:r=>{
-      if(!r.data.length){setErr("No data found");return;}
-      const rows=r.data;const cols=Object.keys(rows[0]);const isM=cols.includes("Text")&&cols.includes("Date");
-      const map=row=>{if(isM){const pl=PLATFORMS.filter(p=>isPlatTrue(row[p])||isPlatTrue(row["Youtube"]&&p==="YouTube"?row["Youtube"]:null));const b=row.Text||"";return{title:(b.split("\n")[0]||"").slice(0,80)||"Untitled",body:b,platforms:pl,datePublished:row.Date||null,status:"Published",pillar:"Other",format:"Caption",tags:"",notes:"",cluster:"",seqNum:undefined};}
-      return{title:(row.title||row.Title||row.text||row.Text||"").slice(0,80)||"Untitled",body:row.body||row.Body||row.text||row.Text||row.Content||"",status:"Idea",pillar:"Other",format:"Caption",platforms:[],tags:"",notes:"",cluster:"",seqNum:undefined};};
-      const all=rows.map(map);setMapped(all);setPreview({isM,sample:all.slice(0,3),total:all.length});setErr(null);
-    },error:()=>setErr("Could not parse file")});
-  };
-  return(<Modal title="Import Content Library" onClose={onClose} wide>
-    <div style={{background:"#f8f7f4",borderRadius:"10px",padding:"13px 16px",fontSize:"0.82rem",color:"#6e6e6e",marginBottom:"16px",lineHeight:"1.7"}}><strong style={{color:"#2d2d2d"}}>Supported:</strong> Metricool CSV export or any CSV with Text/title, Date, and platform columns.</div>
-    <input type="file" accept=".csv" onChange={hf} style={{marginBottom:"14px"}}/>
-    {err&&<div style={{color:"#c47050",marginBottom:"10px",fontSize:"0.83rem",padding:"9px",background:"#fdf5f0",borderRadius:"8px"}}>{err}</div>}
-    {preview&&<><div style={{marginBottom:"8px",display:"flex",gap:"8px",alignItems:"center"}}><span style={bdg("#5a8f5a")}>{preview.isM?"✓ Metricool format":"CSV format"}</span><span style={{fontSize:"0.8rem",color:"#6e6e6e"}}>{preview.total} items ready</span></div>
-      <div style={{background:"#f8f7f4",borderRadius:"10px",padding:"12px",marginBottom:"16px",display:"flex",flexDirection:"column",gap:"7px",maxHeight:"170px",overflowY:"auto"}}>{preview.sample.map((item,i)=><div key={i} style={{padding:"9px 11px",background:"white",borderRadius:"8px",fontSize:"0.79rem"}}><strong>{item.title||"Untitled"}</strong><div style={{color:"#9e9e9e",marginTop:"2px"}}>{trunc(item.body,60)}</div></div>)}</div>
-      <div style={{display:"flex",justifyContent:"flex-end",gap:"9px"}}><button style={sBtn()} onClick={onClose}>Cancel</button><button style={pBtn()} onClick={()=>onImport(mapped)}>Import {preview.total} Items</button></div></>}
-    {!preview&&<div style={{display:"flex",justifyContent:"flex-end"}}><button style={sBtn()} onClick={onClose}>Cancel</button></div>}
-  </Modal>);
-}
-
-// ── Import Performance Modal ───────────────────────────────────────────────
-function ImportPerfModal({platform,setPlatform,onClose,onImport}){
-  const [preview,setPreview]=useState(null);const [mapped,setMapped]=useState([]);const [err,setErr]=useState(null);
-  const hf=e=>{const file=e.target.files[0];if(!file)return;setPreview(null);setMapped([]);setErr(null);
-    Papa.parse(file,{header:true,skipEmptyLines:true,dynamicTyping:true,complete:r=>{
-      if(!r.data.length){setErr("No data found");return;}
-      const m=PERF_MAP[platform];
-      const items=r.data.map(row=>({platform,title:String(getCol(row,m.title)||"Untitled").slice(0,120),date:getCol(row,m.date)||"",views:+(getCol(row,m.views)||0),reach:+(getCol(row,m.reach||["Reach"])||0),likes:+(getCol(row,m.likes)||0),comments:+(getCol(row,m.comments||["Comments"])||0),engagement:+(getCol(row,m.engagement||["Engagement"])||0),avgWatch:+(getCol(row,m.avgWatch)||0),saved:+(getCol(row,m.saved||["Saved"])||0),shares:+(getCol(row,m.shares||["Shares"])||0),url:String(getCol(row,m.url||["url"])||"")}));
-      setMapped(items);setPreview({sample:items.slice(0,3),total:items.length});setErr(null);
-    },error:()=>setErr("Could not parse file")});
-  };
-  return(<Modal title={`Import ${platform} Performance`} onClose={onClose} wide>
-    <div style={{display:"flex",gap:"6px",flexWrap:"wrap",marginBottom:"14px"}}>{PLATFORMS.filter(p=>p!=="Substack"&&p!=="Threads").map(p=><button key={p} onClick={()=>{setPlatform(p);setPreview(null);setMapped([]);setErr(null);}} style={{padding:"6px 13px",borderRadius:"20px",border:`2px solid ${platform===p?PLAT_C[p]:"#e4e0d8"}`,background:platform===p?`${PLAT_C[p]}15`:"white",color:platform===p?PLAT_C[p]:"#9e9e9e",cursor:"pointer",fontSize:"0.79rem",fontWeight:"600"}}>{p}</button>)}</div>
-    <div style={{background:"#f8f7f4",borderRadius:"10px",padding:"11px 14px",fontSize:"0.8rem",color:"#6e6e6e",marginBottom:"14px"}}>Export from {platform} Analytics as CSV and upload here. Columns are auto-mapped.{platform==="TikTok"&&" TikTok: Creator Studio → Analytics → Content → Export."}{platform==="YouTube"&&" YouTube Studio → Analytics → Content → Export CSV."}</div>
-    <input type="file" accept=".csv" onChange={hf} style={{marginBottom:"13px"}}/>
-    {err&&<div style={{color:"#c47050",fontSize:"0.82rem",marginBottom:"10px",padding:"9px",background:"#fdf5f0",borderRadius:"8px"}}>{err}</div>}
-    {preview&&<><div style={{marginBottom:"8px",fontSize:"0.82rem",color:"#6e6e6e"}}>{preview.total} records found</div>
-      <div style={{background:"#f8f7f4",borderRadius:"10px",padding:"12px",marginBottom:"16px",display:"flex",flexDirection:"column",gap:"6px"}}>{preview.sample.map((r,i)=><div key={i} style={{padding:"9px 11px",background:"white",borderRadius:"8px",fontSize:"0.78rem"}}><strong>{trunc(r.title,52)}</strong><div style={{color:"#9e9e9e",marginTop:"2px"}}>Views: {r.views?.toLocaleString()} · Likes: {r.likes} · {fmtDate(r.date)}</div></div>)}</div>
-      <div style={{display:"flex",justifyContent:"flex-end",gap:"9px"}}><button style={sBtn()} onClick={onClose}>Cancel</button><button style={pBtn()} onClick={()=>onImport(mapped)}>Import {preview.total} Records</button></div></>}
-    {!preview&&<div style={{display:"flex",justifyContent:"flex-end"}}><button style={sBtn()} onClick={onClose}>Cancel</button></div>}
-  </Modal>);
-}
-
-// ── View Modal ─────────────────────────────────────────────────────────────
-function ViewModal({item,onClose,onEdit,onDelete,onStatusChange,cc}){
-  const sc=STATUS_C[item.status]||"#9e9e9e";
   return(
     <Modal title="Content Detail" onClose={onClose} wide>
-      <div style={{display:"flex",gap:"6px",flexWrap:"wrap",marginBottom:"14px"}}>
+      <div style={{display:"flex",gap:"7px",flexWrap:"wrap",marginBottom:"16px"}}>
         <span style={bdg(sc)}>{item.status}</span>
-        {item.cluster&&<span style={bdg(cc||"#7a9e7e")}>{item.cluster}{item.seqNum?` #${item.seqNum}`:""}</span>}
-        {item.pillar&&<span style={bdg("#7aa8a0")}>{item.pillar}</span>}
         {item.format&&<span style={bdg("#9e9e9e")}>{item.format}</span>}
         {(item.platforms||[]).map(p=><span key={p} style={bdg(PLAT_C[p]||"#9e9e9e")}>{p}</span>)}
+        {item.pillar&&<span style={bdg("#7aa8a0")}>{item.pillar}</span>}
       </div>
-      <div style={{fontFamily:"'Playfair Display',serif",fontSize:"1.12rem",fontWeight:"600",marginBottom:"13px",color:"#2d2d2d",lineHeight:"1.35"}}>{item.title||"Untitled"}</div>
-      {item.body&&<div style={{background:"#f8f7f4",borderRadius:"10px",padding:"15px 16px",fontSize:"0.86rem",lineHeight:"1.85",color:"#2d2d2d",maxHeight:"280px",overflowY:"auto",whiteSpace:"pre-wrap",marginBottom:"14px",fontFamily:"'Playfair Display',serif"}}>{item.body}</div>}
-      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"8px",marginBottom:"14px",fontSize:"0.79rem",color:"#9e9e9e"}}>
-        {item.dateCreated&&<div>Created: <strong style={{color:"#2d2d2d"}}>{fmtDate(item.dateCreated)}</strong></div>}
-        {item.datePublished&&<div>Published: <strong style={{color:"#2d2d2d"}}>{fmtDate(item.datePublished)}</strong></div>}
-        {item.tags&&<div style={{gridColumn:"1/-1"}}>Tags: <strong style={{color:"#2d2d2d"}}>{item.tags}</strong></div>}
-        {item.notes&&<div style={{gridColumn:"1/-1"}}>Notes: <em style={{color:"#2d2d2d"}}>{item.notes}</em></div>}
+
+      {/* Hook */}
+      <div style={{marginBottom:"16px"}}>
+        <div style={{display:"flex",alignItems:"center",marginBottom:"5px"}}><Lbl c="Hook / Topic"/><CopyBtn text={item.hook} field="hook"/></div>
+        <div style={{fontFamily:"'Playfair Display',serif",fontSize:"1.05rem",fontWeight:"700",color:"#2d2d2d",lineHeight:"1.4"}}>{item.hook||"—"}</div>
       </div>
-      <div style={{marginBottom:"18px"}}>
-        <div style={{fontSize:"0.73rem",fontWeight:"700",color:"#8a8a7a",marginBottom:"7px",letterSpacing:"0.06em"}}>MOVE TO</div>
-        <div style={{display:"flex",gap:"6px",flexWrap:"wrap"}}>{STATUSES.filter(s=>s!==item.status).map(s=><button key={s} onClick={()=>onStatusChange(item.id,s)} style={{padding:"5px 13px",borderRadius:"20px",border:`1.5px solid ${STATUS_C[s]}`,background:"white",color:STATUS_C[s],cursor:"pointer",fontSize:"0.77rem",fontWeight:"600"}}>{s}</button>)}</div>
+
+      {/* Caption */}
+      {item.caption&&<div style={{marginBottom:"16px"}}>
+        <div style={{display:"flex",alignItems:"center",marginBottom:"5px"}}><Lbl c="Caption"/><CopyBtn text={item.caption} field="caption"/></div>
+        <div style={{background:"#f8f7f4",borderRadius:"10px",padding:"14px 16px",fontSize:"0.85rem",lineHeight:"1.85",color:"#2d2d2d",whiteSpace:"pre-wrap",maxHeight:"220px",overflowY:"auto"}}>{item.caption}</div>
+      </div>}
+
+      {/* Hashtags */}
+      {item.hashtags&&<div style={{marginBottom:"16px"}}>
+        <div style={{display:"flex",alignItems:"center",marginBottom:"5px"}}><Lbl c="Hashtags"/><CopyBtn text={item.hashtags} field="hashtags"/></div>
+        <div style={{fontSize:"0.8rem",color:"#652cd1",lineHeight:"1.7"}}>{item.hashtags}</div>
+      </div>}
+
+      {/* Grid of details */}
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"12px",marginBottom:"16px"}}>
+        {item.visualDir&&<div><Lbl c="Visual Direction"/><div style={{fontSize:"0.82rem",color:"#2d2d2d"}}>{item.visualDir}</div></div>}
+        {item.triggerWord&&<div><Lbl c="Comment Trigger"/><div style={{fontSize:"0.9rem",fontWeight:"700",color:"#7aa8a0"}}>"{item.triggerWord}"</div></div>}
+        {item.productCTA&&<div><Lbl c="Product CTA"/><div style={{fontSize:"0.82rem",color:"#b07040"}}>{item.productCTA}</div></div>}
+        {item.date&&<div><Lbl c="Date"/><div style={{fontSize:"0.82rem"}}>{item.date}</div></div>}
+        {item.specialEvent&&<div><Lbl c="Special Event"/><div style={{fontSize:"0.82rem"}}>{item.specialEvent}</div></div>}
       </div>
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-        <button style={{...sBtn(),color:"#c47050",fontSize:"0.79rem"}} onClick={()=>onDelete(item.id)}>Delete</button>
+
+      {item.canvaLink&&<div style={{marginBottom:"16px",padding:"12px 14px",background:"#f5f3fe",borderRadius:"10px",border:"1px solid #a38cf340"}}>
+        <Lbl c="Canva Design"/>
+        <a href={item.canvaLink} target="_blank" rel="noopener" style={{color:"#652cd1",fontWeight:"600",fontSize:"0.85rem",textDecoration:"none"}}>🎨 Open design in Canva ↗</a>
+      </div>}
+
+      {item.notes&&<div style={{marginBottom:"16px"}}>
+        <Lbl c="Notes"/><div style={{fontSize:"0.82rem",color:"#6e6e6e"}}>{item.notes}</div>
+      </div>}
+
+      {/* Move to */}
+      <div style={{marginBottom:"20px"}}>
+        <Lbl c="Move status to"/>
+        <div style={{display:"flex",gap:"7px",flexWrap:"wrap"}}>
+          {Object.keys(STATUS_C).filter(s=>s!==item.status).map(s=>(
+            <button key={s} onClick={()=>{onStatusChange(item.id,s);onClose();}} style={{padding:"5px 14px",borderRadius:"20px",border:`1.5px solid ${STATUS_C[s]}`,background:"white",color:STATUS_C[s],cursor:"pointer",fontSize:"0.78rem",fontWeight:"700"}}>{s}</button>
+          ))}
+        </div>
+      </div>
+
+      <div style={{display:"flex",justifyContent:"space-between"}}>
+        <button style={{...sBtn(),color:"#c47050",fontSize:"0.78rem"}} onClick={()=>onDelete(item.id)}>Delete</button>
         <div style={{display:"flex",gap:"8px"}}><button style={sBtn()} onClick={onClose}>Close</button><button style={pBtn()} onClick={onEdit}>Edit</button></div>
       </div>
     </Modal>
   );
 }
 
-// ── Main App ───────────────────────────────────────────────────────────────
+// ── Add / Edit modal ─────────────────────────────────────────────────────────
+function EditModal({item,onClose,onSave}){
+  const blank={hook:"",caption:"",hashtags:"",platforms:[],format:"Reel/Short",pillar:"Nervous System",visualDir:"",triggerWord:"",productCTA:"",canvaLink:"",notes:"",date:"",status:"Available"};
+  const [f,setF]=useState(item?{...blank,...item}:blank);
+  const s=(k,v)=>setF(p=>({...p,[k]:v}));
+  const tp=p=>s("platforms",f.platforms.includes(p)?f.platforms.filter(x=>x!==p):[...f.platforms,p]);
+  return(
+    <Modal title={item?"Edit Content":"Add Content"} onClose={onClose} wide>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"13px"}}>
+        <div style={{gridColumn:"1/-1"}}>
+          <Lbl c="Hook / First Line (what grabs attention)"/>
+          <input style={inp} value={f.hook} onChange={e=>s("hook",e.target.value)} placeholder="e.g. You've been told to breathe. To journal. And you're still exhausted."/>
+        </div>
+        <div style={{gridColumn:"1/-1"}}>
+          <Lbl c="Full Caption / Body Text"/>
+          <textarea style={{...inp,minHeight:"120px",resize:"vertical"}} value={f.caption} onChange={e=>s("caption",e.target.value)} placeholder="Paste your full caption, newsletter text, script, or blog post here…"/>
+        </div>
+        <div style={{gridColumn:"1/-1"}}>
+          <Lbl c="Hashtags"/>
+          <input style={inp} value={f.hashtags} onChange={e=>s("hashtags",e.target.value)} placeholder="#mentalhealth #HSP #nervoussystemregulation…"/>
+        </div>
+        <div>
+          <Lbl c="Format"/>
+          <select style={{...inp,cursor:"pointer"}} value={f.format} onChange={e=>s("format",e.target.value)}>{FORMATS.map(x=><option key={x}>{x}</option>)}</select>
+        </div>
+        <div>
+          <Lbl c="Status"/>
+          <select style={{...inp,cursor:"pointer"}} value={f.status} onChange={e=>s("status",e.target.value)}>{Object.keys(STATUS_C).map(x=><option key={x}>{x}</option>)}</select>
+        </div>
+        <div style={{gridColumn:"1/-1"}}>
+          <Lbl c="Platforms"/>
+          <div style={{display:"flex",gap:"7px",flexWrap:"wrap"}}>
+            {PLATFORMS.map(p=><button key={p} type="button" onClick={()=>tp(p)} style={{padding:"5px 12px",borderRadius:"20px",border:`2px solid ${f.platforms.includes(p)?PLAT_C[p]:"#e4e0d8"}`,background:f.platforms.includes(p)?`${PLAT_C[p]}18`:"white",color:f.platforms.includes(p)?PLAT_C[p]:"#9e9e9e",cursor:"pointer",fontSize:"0.78rem",fontWeight:"600"}}>{p}</button>)}
+          </div>
+        </div>
+        <div>
+          <Lbl c="Visual Direction / Creative Type"/>
+          <input style={inp} value={f.visualDir} onChange={e=>s("visualDir",e.target.value)} placeholder="e.g. Talking head, 1080×1920, dark background"/>
+        </div>
+        <div>
+          <Lbl c="Comment Trigger Word"/>
+          <input style={inp} value={f.triggerWord} onChange={e=>s("triggerWord",e.target.value)} placeholder="e.g. ANCHOR"/>
+        </div>
+        <div>
+          <Lbl c="Product CTA"/>
+          <input style={inp} value={f.productCTA} onChange={e=>s("productCTA",e.target.value)} placeholder="e.g. The 90-Second Anchor (free)"/>
+        </div>
+        <div>
+          <Lbl c="Date / Week"/>
+          <input style={inp} value={f.date} onChange={e=>s("date",e.target.value)} placeholder="e.g. 15 May 2026"/>
+        </div>
+        <div style={{gridColumn:"1/-1"}}>
+          <Lbl c="Canva Design Link (optional)"/>
+          <input style={inp} value={f.canvaLink} onChange={e=>s("canvaLink",e.target.value)} placeholder="https://www.canva.com/design/…"/>
+        </div>
+        <div style={{gridColumn:"1/-1"}}>
+          <Lbl c="Notes"/>
+          <input style={inp} value={f.notes} onChange={e=>s("notes",e.target.value)} placeholder="Any notes for yourself…"/>
+        </div>
+      </div>
+      <div style={{display:"flex",justifyContent:"flex-end",gap:"9px",marginTop:"20px"}}>
+        <button style={sBtn()} onClick={onClose}>Cancel</button>
+        <button style={pBtn()} onClick={()=>{if(!f.hook&&!f.caption)return alert("Add a hook or caption first");onSave({...f,id:f.id||genId(),dateCreated:f.dateCreated||new Date().toISOString()});}}>Save</button>
+      </div>
+    </Modal>
+  );
+}
+
+// ── Import modal ─────────────────────────────────────────────────────────────
+function ImportModal({onClose,onImport}){
+  const [preview,setPreview]=useState(null);const [rows,setRows]=useState([]);const [err,setErr]=useState(null);
+
+  const handle=e=>{
+    const file=e.target.files[0];if(!file)return;
+    Papa.parse(file,{header:true,skipEmptyLines:true,dynamicTyping:false,
+      complete:r=>{
+        if(!r.data.length){setErr("No data found");return;}
+        const cols=Object.keys(r.data[0]);
+        const isGHL=cols.some(c=>c.includes("HOOK")||c.includes("CAPTION"));
+        const isDailyCal=cols.includes("Main Line / Hook")&&cols.includes("Caption");
+
+        let mapped;
+        if(isGHL){
+          mapped=r.data.filter(row=>(row["HOOK / TOPIC"]||row["CAPTION"]||"").trim()).map(row=>({
+            id:genId(),hook:row["HOOK / TOPIC"]||"",caption:row["CAPTION"]||"",hashtags:row["HASHTAGS"]||"",
+            platforms:parsePlats(row["GHL PRIMARY PLATFORM(S)"]||""),format:(row["POST TYPE"]||"Reel/Short").replace("Video — ","").replace("Graphic — ","Graphic ").trim(),
+            visualDir:`${row["CREATIVE TYPE"]||""} ${row["CREATIVE SIZE"]||""}`.trim(),
+            triggerWord:row["COMMENT TRIGGER WORD"]||"",productCTA:row["PRODUCT CTA"]||"",
+            status:parseSt(row["STATUS"]||""),date:row["DATE"]||"",
+            notes:row["GHL SCHEDULING NOTES"]||"",pillar:row["CONTENT PILLAR"]||"",
+            specialEvent:row["SPECIAL EVENT"]||"",canvaLink:"",dateCreated:new Date().toISOString()
+          }));
+        } else if(isDailyCal){
+          mapped=r.data.filter(row=>(row["Main Line / Hook"]||"").trim()).map(row=>({
+            id:genId(),hook:row["Main Line / Hook"]||"",caption:row["Caption"]||"",
+            hashtags:row["Suggested Tags"]||"",platforms:[],format:row["Format"]||"Graphic",
+            visualDir:row["Visual Direction"]||"",triggerWord:"",productCTA:"",
+            status:"Available",date:row["Date"]||"",notes:row["Comment Prompt"]||"",
+            pillar:"",specialEvent:"",canvaLink:"",dateCreated:new Date().toISOString()
+          }));
+        } else {
+          // Generic - best guess
+          mapped=r.data.map(row=>{
+            const vals=Object.values(row);
+            const hook=row["hook"]||row["Hook"]||row["HOOK"]||row["title"]||row["Title"]||vals[0]||"";
+            const caption=row["caption"]||row["Caption"]||row["CAPTION"]||row["body"]||row["Body"]||vals[1]||"";
+            return{id:genId(),hook:String(hook).slice(0,200),caption:String(caption),hashtags:row["hashtags"]||row["Hashtags"]||row["HASHTAGS"]||"",
+              platforms:[],format:"Other",visualDir:"",triggerWord:"",productCTA:"",status:"Available",
+              date:"",notes:"",pillar:"",canvaLink:"",dateCreated:new Date().toISOString()};
+          }).filter(i=>i.hook||i.caption);
+        }
+
+        const type=isGHL?"✓ GHL Calendar format":isDailyCal?"✓ Daily Calendar format":"Generic CSV";
+        setRows(mapped);setPreview({type,total:mapped.length,sample:mapped.slice(0,3)});setErr(null);
+      },
+      error:()=>setErr("Could not read this file")
+    });
+  };
+
+  return(
+    <Modal title="Import Content" onClose={onClose} wide>
+      <div style={{background:"#f8f7f4",borderRadius:"10px",padding:"13px 16px",fontSize:"0.82rem",color:"#6e6e6e",marginBottom:"16px",lineHeight:"1.7"}}>
+        <strong style={{color:"#2d2d2d"}}>Works with your GHL Excel calendar</strong> — just export as CSV from Excel (File → Save As → CSV) and upload here. Also works with the daily calendar format or any spreadsheet with hook/caption columns.
+      </div>
+      <input type="file" accept=".csv,.xlsx" onChange={handle} style={{marginBottom:"14px"}}/>
+      {err&&<div style={{color:"#c47050",marginBottom:"10px",fontSize:"0.83rem",padding:"9px",background:"#fdf5f0",borderRadius:"8px"}}>{err}</div>}
+      {preview&&<>
+        <div style={{marginBottom:"10px",display:"flex",gap:"8px",alignItems:"center"}}>
+          <span style={bdg("#5a8f5a")}>{preview.type}</span>
+          <span style={{fontSize:"0.8rem",color:"#6e6e6e"}}>{preview.total} items ready to import</span>
+        </div>
+        <div style={{background:"#f8f7f4",borderRadius:"10px",padding:"12px",marginBottom:"16px",display:"flex",flexDirection:"column",gap:"8px",maxHeight:"200px",overflowY:"auto"}}>
+          {preview.sample.map((item,i)=>(
+            <div key={i} style={{padding:"10px 12px",background:"white",borderRadius:"8px"}}>
+              <div style={{fontSize:"0.82rem",fontWeight:"700",marginBottom:"3px"}}>{item.hook||"Untitled"}</div>
+              <div style={{fontSize:"0.74rem",color:"#9e9e9e"}}>{trunc(item.caption,80)} {item.platforms?.length>0&&`· ${item.platforms.join(", ")}`} · <span style={{color:STATUS_C[item.status]||"#aaa"}}>{item.status}</span></div>
+            </div>
+          ))}
+        </div>
+        <div style={{display:"flex",justifyContent:"flex-end",gap:"9px"}}>
+          <button style={sBtn()} onClick={onClose}>Cancel</button>
+          <button style={pBtn()} onClick={()=>onImport(rows)}>Import {preview.total} items</button>
+        </div>
+      </>}
+      {!preview&&<div style={{display:"flex",justifyContent:"flex-end"}}><button style={sBtn()} onClick={onClose}>Cancel</button></div>}
+    </Modal>
+  );
+}
+
+// ── Main App ─────────────────────────────────────────────────────────────────
 function App(){
-  const [tab,setTab]=useState("library");
-  const [library,setLibrary]=useState([]);
-  const [performance,setPerformance]=useState([]);
+  const [library,setLib]=useState([]);
   const [ready,setReady]=useState(false);
-  const [modal,setModal]=useState(null);
-  const [selected,setSelected]=useState(null);
+  const [modal,setModal]=useState(null); // null | "add" | "edit" | "import" | "detail"
+  const [selected,setSel]=useState(null);
   const [toast,setToast]=useState(null);
-  const [impPlat,setImpPlat]=useState("Instagram");
   const [search,setSearch]=useState("");
-  const [fPillar,setFPillar]=useState("All");
+  const [fPlat,setFPlat]=useState("All");
+  const [fFormat,setFFormat]=useState("All");
   const [fStatus,setFStatus]=useState("All");
-  const [fPlatform,setFPlatform]=useState("All");
-  const [fCluster,setFCluster]=useState("All");
-  const [grouped,setGrouped]=useState(true);
+  const [sort,setSort]=useState("newest");
 
   useEffect(()=>{
-    try{
-      const lib=localStorage.getItem("em_lib_v2");
-      if(lib){setLibrary(JSON.parse(lib));}
-      else{const seeded=SEED.map(item=>({...item,id:genId(),dateCreated:new Date().toISOString()}));setLibrary(seeded);saveLib(seeded);}
-    }catch(e){const seeded=SEED.map(item=>({...item,id:genId(),dateCreated:new Date().toISOString()}));setLibrary(seeded);saveLib(seeded);}
-    try{const perf=localStorage.getItem("em_perf");if(perf)setPerformance(JSON.parse(perf));}catch(e){}
+    const d=load();
+    if(d&&d.length>0)setLib(d);
     setReady(true);
   },[]);
 
-  const clusters=[...new Set(library.map(i=>i.cluster).filter(Boolean))];
-  const getCC=c=>CLUSTER_COLORS[clusters.indexOf(c)%CLUSTER_COLORS.length]||"#9e9e9e";
-  const showToast=(msg,err)=>{setToast({msg,err});setTimeout(()=>setToast(null),3000);};
+  const update=d=>{setLib(d);save(d);};
+  const showToast=(msg,err)=>{setToast({msg,err});setTimeout(()=>setToast(null),2800);};
 
-  const updateLib=data=>{setLibrary(data);saveLib(data);};
-  const updatePerf=data=>{setPerformance(data);savePerf(data);};
+  const handleSave=item=>{
+    let next;
+    if(library.find(i=>i.id===item.id))next=library.map(i=>i.id===item.id?item:i);
+    else next=[{...item,dateCreated:item.dateCreated||new Date().toISOString()},...library];
+    update(next);setModal(null);showToast(library.find(i=>i.id===item.id)?"Updated ✓":"Added ✓");
+  };
 
-  const filteredLib=library.filter(i=>{
-    if(search&&!i.title?.toLowerCase().includes(search.toLowerCase())&&!i.body?.toLowerCase().includes(search.toLowerCase())&&!i.tags?.toLowerCase().includes(search.toLowerCase()))return false;
-    if(fCluster!=="All"&&i.cluster!==fCluster)return false;
-    if(fPillar!=="All"&&i.pillar!==fPillar)return false;
+  const handleStatus=(id,st)=>{const next=library.map(i=>i.id===id?{...i,status:st}:i);update(next);setSel(s=>s&&s.id===id?{...s,status:st}:s);showToast(`Moved to ${st} ✓`);};
+  const handleDelete=id=>{if(!confirm("Delete this item?"))return;update(library.filter(i=>i.id!==id));setModal(null);showToast("Deleted");};
+
+  const exportBackup=()=>{const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([JSON.stringify({library,exported:new Date().toISOString()},null,2)],{type:"application/json"}));a.download=`em-library-${new Date().toISOString().slice(0,10)}.json`;a.click();showToast("Backup saved ✓");};
+  const importBackup=e=>{const file=e.target.files[0];if(!file)return;const r=new FileReader();r.onload=ev=>{try{const d=JSON.parse(ev.target.result);if(d.library)update(d.library);showToast(`Restored ${d.library?.length||0} items ✓`);}catch{showToast("Could not read backup",true);}};r.readAsText(file);e.target.value="";};
+
+  // Filter + sort
+  const filtered=library.filter(i=>{
+    if(search&&!i.hook?.toLowerCase().includes(search.toLowerCase())&&!i.caption?.toLowerCase().includes(search.toLowerCase())&&!i.hashtags?.toLowerCase().includes(search.toLowerCase()))return false;
+    if(fPlat!=="All"&&!i.platforms?.includes(fPlat))return false;
+    if(fFormat!=="All"&&i.format!==fFormat)return false;
     if(fStatus!=="All"&&i.status!==fStatus)return false;
-    if(fPlatform!=="All"&&!i.platforms?.includes(fPlatform))return false;
     return true;
   });
 
-  const handleSave=item=>{
-    let updated;
-    if(item.id&&library.find(i=>i.id===item.id)){updated=library.map(i=>i.id===item.id?item:i);showToast("Updated ✓");}
-    else{updated=[...library,{...item,id:genId(),dateCreated:new Date().toISOString()}];showToast("Added ✓");}
-    updateLib(updated);setModal(null);
-  };
+  const sorted=[...filtered].sort((a,b)=>{
+    if(sort==="newest")return new Date(b.dateCreated||0)-new Date(a.dateCreated||0);
+    if(sort==="oldest")return new Date(a.dateCreated||0)-new Date(b.dateCreated||0);
+    if(sort==="status"){const o={Available:0,"In GHL":1,Posted:2};return (o[a.status]||0)-(o[b.status]||0);}
+    return 0;
+  });
 
-  const handleDelete=id=>{if(!confirm("Delete this item?"))return;updateLib(library.filter(i=>i.id!==id));setModal(null);showToast("Deleted");};
+  const counts=Object.fromEntries(Object.keys(STATUS_C).map(s=>[s,library.filter(i=>i.status===s).length]));
 
-  const exportBackup=()=>{
-    const a=document.createElement("a");
-    a.href=URL.createObjectURL(new Blob([JSON.stringify({library,performance,brand:"Everyday Modern",exported:new Date().toISOString()},null,2)],{type:"application/json"}));
-    a.download=`everyday-modern-backup-${new Date().toISOString().slice(0,10)}.json`;
-    a.click();showToast("Backup downloaded ✓");
-  };
+  if(!ready)return <div style={{display:"flex",alignItems:"center",justifyContent:"center",height:"100vh",background:"#f8f7f4",flexDirection:"column",gap:"10px"}}><div style={{color:"#7a9e7e",fontFamily:"'Playfair Display',serif",fontSize:"1.6rem"}}>Everyday Modern</div><div style={{color:"#b8b8b0",fontSize:"0.78rem",letterSpacing:"0.1em"}}>LOADING…</div></div>;
 
-  const importBackup=e=>{const file=e.target.files[0];if(!file)return;const reader=new FileReader();
-    reader.onload=ev=>{try{const data=JSON.parse(ev.target.result);if(data.library)updateLib(data.library);if(data.performance)updatePerf(data.performance);showToast("Restored ✓");}catch{showToast("Could not read backup",true);}};
-    reader.readAsText(file);e.target.value="";};
-
-  if(!ready)return null;
-
-  const ts=t=>({padding:"7px 16px",borderRadius:"20px",border:"none",cursor:"pointer",background:tab===t?"#7a9e7e":"transparent",color:tab===t?"white":"#7a7a7a",fontSize:"0.79rem",fontWeight:tab===t?"700":"400",transition:"all 0.15s"});
+  const sel={...inp,maxWidth:"145px",cursor:"pointer",fontSize:"0.8rem"};
 
   return(
     <div style={{fontFamily:"'Lato',sans-serif",background:"#f8f7f4",minHeight:"100vh"}}>
-      <div style={{background:"#2d2d2d",padding:"13px 24px",display:"flex",alignItems:"center",justifyContent:"space-between",position:"sticky",top:0,zIndex:100,boxShadow:"0 2px 16px rgba(0,0,0,0.2)"}}>
+      {/* Header */}
+      <div style={{background:"#2d2d2d",padding:"0 24px",height:"56px",display:"flex",alignItems:"center",justifyContent:"space-between",position:"sticky",top:0,zIndex:50,boxShadow:"0 2px 16px rgba(0,0,0,0.22)"}}>
         <div>
-          <div style={{color:"#7a9e7e",fontFamily:"'Playfair Display',serif",fontSize:"1.2rem",fontWeight:"700",letterSpacing:"-0.01em"}}>Everyday Modern</div>
-          <div style={{color:"#5a5a5a",fontSize:"0.61rem",letterSpacing:"0.2em",marginTop:"1px"}}>CONTENT COMMAND CENTRE</div>
+          <span style={{color:"#7a9e7e",fontFamily:"'Playfair Display',serif",fontSize:"1.1rem",fontWeight:"700"}}>Everyday Modern</span>
+          <span style={{color:"#5a5a5a",fontSize:"0.6rem",letterSpacing:"0.2em",marginLeft:"10px"}}>CONTENT LIBRARY</span>
         </div>
-        <div style={{display:"flex",gap:"4px",background:"rgba(255,255,255,0.06)",borderRadius:"24px",padding:"4px"}}>
-          <button style={ts("library")} onClick={()=>setTab("library")}>📚 Library</button>
-          <button style={ts("performance")} onClick={()=>setTab("performance")}>📊 Performance</button>
-          <button style={ts("planner")} onClick={()=>setTab("planner")}>🗓 Planner</button>
-        </div>
-        <div style={{display:"flex",gap:"6px"}}>
-          <button onClick={exportBackup} style={{padding:"6px 13px",borderRadius:"20px",border:"1px solid #4a4a4a",cursor:"pointer",background:"transparent",color:"#9a9a9a",fontSize:"0.72rem",fontFamily:"inherit"}}>⬇ Backup</button>
-          <label style={{padding:"6px 13px",borderRadius:"20px",border:"1px solid #4a4a4a",cursor:"pointer",background:"transparent",color:"#9a9a9a",fontSize:"0.72rem",display:"inline-block",fontFamily:"inherit"}}>⬆ Restore<input type="file" accept=".json" onChange={importBackup} style={{display:"none"}}/></label>
+        <div style={{display:"flex",gap:"7px",alignItems:"center"}}>
+          <button onClick={()=>setModal("import")} style={{...sBtn(),background:"#3a3a3a",border:"1px solid #5a5a5a",color:"#d0d0d0",fontSize:"0.78rem"}}>⬆ Import CSV</button>
+          <button onClick={()=>{setSel(null);setModal("add");}} style={pBtn()}>+ Add Content</button>
+          <button onClick={exportBackup} style={{padding:"6px 11px",borderRadius:"20px",border:"1px solid #4a4a4a",cursor:"pointer",background:"transparent",color:"#8a8a8a",fontSize:"0.7rem",fontFamily:"inherit"}}>⬇ Backup</button>
+          <label style={{padding:"6px 11px",borderRadius:"20px",border:"1px solid #4a4a4a",cursor:"pointer",background:"transparent",color:"#8a8a8a",fontSize:"0.7rem",fontFamily:"inherit",display:"inline-block"}}>⬆ Restore<input type="file" accept=".json" onChange={importBackup} style={{display:"none"}}/></label>
         </div>
       </div>
 
-      <div style={{maxWidth:"1200px",margin:"0 auto",padding:"22px 24px"}}>
-        {tab==="library"&&<LibraryTab library={library} filtered={filteredLib} search={search} setSearch={setSearch} fPillar={fPillar} setFPillar={setFPillar} fStatus={fStatus} setFStatus={setFStatus} fPlatform={fPlatform} setFPlatform={setFPlatform} fCluster={fCluster} setFCluster={setFCluster} grouped={grouped} setGrouped={setGrouped} onAdd={()=>{setSelected(null);setModal("add");}} onImport={()=>setModal("import-lib")} onView={item=>{setSelected(item);setModal("view");}} getCC={getCC}/>}
-        {tab==="performance"&&<PerformanceTab performance={performance} onImport={p=>{setImpPlat(p);setModal("import-perf");}} onClear={()=>{if(confirm("Clear all performance data?"))updatePerf([]);}}/>}
-        {tab==="planner"&&<PlannerTab library={library} performance={performance} getCC={getCC}/>}
+      <div style={{maxWidth:"1280px",margin:"0 auto",padding:"20px 24px"}}>
+        {/* Status summary */}
+        <div style={{display:"flex",gap:"10px",marginBottom:"18px",flexWrap:"wrap"}}>
+          {[{label:"Total",val:library.length,c:"#2d2d2d"},...Object.entries(STATUS_C).map(([s,c])=>({label:s,val:counts[s]||0,c}))].map(({label,val,c})=>(
+            <div key={label} onClick={()=>setFStatus(label==="Total"?"All":label)} style={{background:"white",borderRadius:"12px",padding:"12px 18px",boxShadow:"0 2px 8px rgba(0,0,0,0.05)",cursor:"pointer",borderBottom:`3px solid ${label==="Total"?"#e8e4dc":c}`,transition:"all 0.12s",minWidth:"90px"}}>
+              <div style={{fontSize:"1.7rem",fontWeight:"800",color:c,lineHeight:1}}>{val}</div>
+              <div style={{fontSize:"0.68rem",color:"#9e9e9e",marginTop:"3px",letterSpacing:"0.04em"}}>{label.toUpperCase()}</div>
+            </div>
+          ))}
+          <div style={{flex:1,display:"flex",alignItems:"center",justifyContent:"flex-end",gap:"6px",fontSize:"0.73rem",color:"#b0b0a8"}}>
+            <span>Click a status card to filter</span>
+          </div>
+        </div>
+
+        {/* Filters */}
+        <div style={{display:"flex",gap:"8px",marginBottom:"16px",flexWrap:"wrap",alignItems:"center"}}>
+          <input style={{...inp,maxWidth:"240px"}} placeholder="🔍  Search hooks, captions, hashtags…" value={search} onChange={e=>setSearch(e.target.value)}/>
+          <select style={sel} value={fPlat} onChange={e=>setFPlat(e.target.value)}><option value="All">All Platforms</option>{PLATFORMS.map(p=><option key={p}>{p}</option>)}</select>
+          <select style={sel} value={fFormat} onChange={e=>setFFormat(e.target.value)}><option value="All">All Formats</option>{FORMATS.map(f=><option key={f}>{f}</option>)}</select>
+          <select style={sel} value={fStatus} onChange={e=>setFStatus(e.target.value)}><option value="All">All Status</option>{Object.keys(STATUS_C).map(s=><option key={s}>{s}</option>)}</select>
+          <select style={sel} value={sort} onChange={e=>setSort(e.target.value)}><option value="newest">Newest first</option><option value="oldest">Oldest first</option><option value="status">By status</option></select>
+          {(search||fPlat!=="All"||fFormat!=="All"||fStatus!=="All")&&<button onClick={()=>{setSearch("");setFPlat("All");setFFormat("All");setFStatus("All");}} style={{...sBtn(),fontSize:"0.76rem",color:"#c47050"}}>✕ Clear</button>}
+          <div style={{marginLeft:"auto",fontSize:"0.75rem",color:"#b0b0a8"}}>{sorted.length} item{sorted.length!==1?"s":""}</div>
+        </div>
+
+        {/* Content Grid */}
+        {sorted.length===0?(
+          <div style={{background:"white",borderRadius:"18px",padding:"70px 40px",textAlign:"center",boxShadow:"0 2px 12px rgba(0,0,0,0.06)"}}>
+            {library.length===0?(
+              <>
+                <div style={{fontSize:"3.5rem",marginBottom:"16px"}}>📚</div>
+                <div style={{fontFamily:"'Playfair Display',serif",fontSize:"1.3rem",color:"#2d2d2d",marginBottom:"8px"}}>Your content library is empty</div>
+                <div style={{color:"#9e9e9e",fontSize:"0.88rem",marginBottom:"24px",lineHeight:"1.7",maxWidth:"400px",margin:"0 auto 24px"}}>
+                  Import your GHL Excel calendar as a CSV, or add content manually.<br/>Everything goes here — hooks, captions, newsletters, blogs, scripts.
+                </div>
+                <div style={{display:"flex",gap:"10px",justifyContent:"center",flexWrap:"wrap"}}>
+                  <button style={pBtn("#4a8fa0")} onClick={()=>setModal("import")}>⬆ Import from GHL Calendar</button>
+                  <button style={pBtn()} onClick={()=>{setSel(null);setModal("add");}}>+ Add Content Manually</button>
+                </div>
+              </>
+            ):<div style={{color:"#9e9e9e",fontSize:"0.9rem"}}>No items match your filters</div>}
+          </div>
+        ):(
+          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(320px,1fr))",gap:"14px"}}>
+            {sorted.map(item=>(
+              <Card key={item.id} item={item}
+                onClick={()=>{setSel(item);setModal("detail");}}
+                onStatusChange={handleStatus}/>
+            ))}
+          </div>
+        )}
       </div>
 
-      {modal==="add"&&<AddModal item={selected} onClose={()=>setModal(null)} onSave={handleSave} clusters={clusters}/>}
-      {modal==="edit"&&<AddModal item={selected} onClose={()=>setModal(null)} onSave={handleSave} clusters={clusters}/>}
-      {modal==="import-lib"&&<ImportLibModal onClose={()=>setModal(null)} onImport={items=>{updateLib([...library,...items.map(i=>({...i,id:genId(),dateCreated:new Date().toISOString()}))]);setModal(null);showToast(`${items.length} items imported ✓`);}}/>}
-      {modal==="import-perf"&&<ImportPerfModal platform={impPlat} setPlatform={setImpPlat} onClose={()=>setModal(null)} onImport={items=>{updatePerf([...performance,...items.map(i=>({...i,id:genId()}))]);setModal(null);showToast(`${items.length} records imported ✓`);}}/>}
-      {modal==="view"&&<ViewModal item={selected} onClose={()=>setModal(null)} onEdit={()=>setModal("edit")} onDelete={handleDelete} cc={getCC(selected?.cluster)} onStatusChange={(id,status)=>{const u=library.map(i=>i.id===id?{...i,status}:i);updateLib(u);setSelected({...selected,status});showToast("Status updated ✓");}}/>}
+      {/* Modals */}
+      {modal==="add"&&<EditModal item={null} onClose={()=>setModal(null)} onSave={handleSave}/>}
+      {modal==="edit"&&selected&&<EditModal item={selected} onClose={()=>setModal(null)} onSave={handleSave}/>}
+      {modal==="import"&&<ImportModal onClose={()=>setModal(null)} onImport={items=>{const next=[...items,...library];update(next);setModal(null);showToast(`${items.length} items imported ✓`);}}/>}
+      {modal==="detail"&&selected&&<DetailModal item={selected} onClose={()=>setModal(null)} onEdit={()=>setModal("edit")} onDelete={handleDelete} onStatusChange={handleStatus}/>}
 
-      {toast&&<div style={{position:"fixed",bottom:"24px",right:"24px",background:toast.err?"#c47050":"#5a8f5a",color:"white",padding:"11px 20px",borderRadius:"10px",fontSize:"0.85rem",boxShadow:"0 6px 20px rgba(0,0,0,0.18)",zIndex:9999,fontWeight:"600"}}>{toast.msg}</div>}
+      {toast&&<div style={{position:"fixed",bottom:"22px",right:"22px",background:toast.err?"#c47050":"#5a8f5a",color:"white",padding:"11px 20px",borderRadius:"10px",fontSize:"0.85rem",boxShadow:"0 6px 20px rgba(0,0,0,0.18)",zIndex:9999,fontWeight:"600"}}>{toast.msg}</div>}
     </div>
   );
 }
